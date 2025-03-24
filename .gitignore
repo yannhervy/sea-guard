@@ -1,0 +1,78 @@
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment folders
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# MacOS system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
+
+# Environment variable files (secrets)
+.env
+
+# Ignore all files in the /pics directory
+/pics/*
+!/pics/.gitkeep   # (Optional: keeps an empty folder in Git)
+
+# Temporary or backup files
+*.tmp
+*.bak
