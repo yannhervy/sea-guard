@@ -35,7 +35,7 @@ def setup_mqtt():
         exit(1)
 
 # ----------- CALLBACKS -----------
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties=None):  # Add `properties` argument for MQTTv5
     if rc == 0:
         logger.info("Successfully connected to MQTT broker.")
         # Subscribe to relevant topics
