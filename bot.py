@@ -234,8 +234,8 @@ async def handle_mqtt_event(app, topic, payload):
     Hanterar meddelanden som kommer in på topic: "sjoboden/events".
     Skickar en pushtext + en standardbild till gruppen.
     """
-    await send_group_push_message(app, text=f"📡 MQTT event på {topic}: {payload}")
-    await send_default_photo(app)
+    # await send_group_push_message(app, text=f"📡 MQTT event på {topic}: {payload}")
+    # await send_default_photo(app)
 
 # ----------------------- MAIN: starta bot & tasks -----------------------
 
