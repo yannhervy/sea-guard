@@ -49,13 +49,15 @@ def delete_old_pictures():
         logger.warning(f"Katalogen '{PICTURE_FOLDER}' finns inte!")
         return
 
-    files = os.listdir(PICTURE_FOLDER)
     now = datetime.now()
     cutoff_date = now - timedelta(days=RETENTION_DAYS)
 
     deleted_files = 0
-    for file_name in files:
-        match = re.match(FILENAME_PATTERN, file_name)
+    for file_path in PICTURE_FOLDER.iterdir():
+        if not file_path.is_file():
+            continue
+
+        match = re.match(FILENAME_PATTERN, file_path.name)
         if not match:
             continue
 
@@ -70,17 +72,16 @@ def delete_old_pictures():
                 int(hour), int(minute), int(second)
             )
         except ValueError as e:
-            logger.error(f"Kunde inte tolka datum från '{file_name}': {e}")
+            logger.error(f"Kunde inte tolka datum från '{file_path.name}': {e}")
             continue
 
         if file_datetime < cutoff_date:
-            file_path = PICTURE_FOLDER / file_name
             try:
                 file_path.unlink()
                 deleted_files += 1
-                logger.info(f"Raderade: {file_name}")
+                logger.info(f"Raderade: {file_path.name}")
             except Exception as e:
-                logger.error(f"Fel vid borttagning av '{file_name}': {e}")
+                logger.error(f"Fel vid borttagning av '{file_path.name}': {e}")
 
     logger.info(f"Rensning klar. {deleted_files} filer borttagna.")
 
@@ -90,11 +91,13 @@ def get_latest_pictures(n):
         logger.warning(f"Katalogen '{PICTURE_FOLDER}' finns inte!")
         return []
 
-    files = os.listdir(PICTURE_FOLDER)
     picture_files = []
 
-    for file_name in files:
-        match = re.match(FILENAME_PATTERN, file_name)
+    for file_path in PICTURE_FOLDER.iterdir():
+        if not file_path.is_file():
+            continue
+
+        match = re.match(FILENAME_PATTERN, file_path.name)
         if not match:
             continue
 
@@ -108,8 +111,7 @@ def get_latest_pictures(n):
                 int(year), int(month), int(day),
                 int(hour), int(minute), int(second)
             )
-            file_path = str((PICTURE_FOLDER / file_name).resolve())
-            picture_files.append((file_datetime, file_path))
+            picture_files.append((file_datetime, str(file_path.resolve())))
         except ValueError:
             continue
 

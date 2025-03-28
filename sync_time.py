@@ -7,6 +7,9 @@ def sync_time():
         # Sync system time using ntpdate and pool.ntp.org
         subprocess.run(["sudo", "ntpdate", "-u", "pool.ntp.org"], check=True)
         print("System time successfully synced to UTC.")
+    except FileNotFoundError:
+        print("Error: 'ntpdate' is not installed. Please install it and try again.")
+        sys.exit(1)
     except subprocess.CalledProcessError as e:
         print("Time sync failed:", e)
         sys.exit(1)

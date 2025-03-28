@@ -17,6 +17,15 @@ def on_connect(client, userdata, flags, rc):
     else:
         logging.error(f"Failed to connect, return code {rc}")
 
+# Callback when the client disconnects from the broker
+def on_disconnect(client, userdata, rc):
+    if rc != 0:
+        logging.warning("Unexpected disconnection. Attempting to reconnect...")
+        try:
+            client.reconnect()
+        except Exception as e:
+            logging.error(f"Reconnection failed: {e}")
+
 # Callback when a message is received
 def on_message(client, userdata, msg):
     logging.info(f"Topic: {msg.topic}, Message: {msg.payload.decode('utf-8')}")
@@ -24,6 +33,7 @@ def on_message(client, userdata, msg):
 # MQTT client setup
 client = mqtt.Client()
 client.on_connect = on_connect
+client.on_disconnect = on_disconnect
 client.on_message = on_message
 
 # Connect to the MQTT broker

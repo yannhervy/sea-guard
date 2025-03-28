@@ -198,7 +198,11 @@ async def mqtt_subscribe_task(app):
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
-    client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    try:
+        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    except Exception as e:
+        logging.error(f"Misslyckades att ansluta till MQTT-broker: {e}")
+        return
     client.loop_start()
 
     while True:

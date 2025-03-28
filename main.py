@@ -2,15 +2,15 @@ import subprocess
 import signal
 import sys
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 import threading
 import socket
+import platform
 
 scripts = [
     "bot.py",
-    "intercept-all-mqtt.py",
-    "mqtt_GET_LATEST_PICTURES_N.py"
+    # "intercept-all-mqtt.py"
 ]
 
 COLORS = [
@@ -37,12 +37,16 @@ def has_internet(host="8.8.8.8", port=53, timeout=3) -> bool:
 
 def wait_for_internet(check_interval=600):
     while not has_internet():
-        print(f"[{datetime.now().isoformat()}] No internet. Retrying in {check_interval // 60} minutes...")
+        print(f"[{datetime.now(timezone.utc).isoformat()}] No internet. Retrying in {check_interval // 60} minutes...")
         time.sleep(check_interval)
-    print(f"[{datetime.now().isoformat()}] Internet is available.")
+    print(f"[{datetime.now(timezone.utc).isoformat()}] Internet is available.")
 
 def sync_system_time():
     print("Syncing system time to UTC...")
+    if platform.system() == "Windows":
+        print("Time sync is not supported on Windows. Skipping...")
+        return
+
     result = subprocess.run(["sudo", "python3", "sync_time.py"])
     if result.returncode != 0:
         print("Time sync failed, aborting startup.")
@@ -54,7 +58,7 @@ def ensure_log_dir():
         os.makedirs(log_dir)
 
 def get_log_path(script_name):
-    date_str = datetime.utcnow().strftime("%Y-%m-%d")
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     script_base = os.path.splitext(os.path.basename(script_name))[0]
     return os.path.join(log_dir, f"{date_str}_{script_base}.log")
 
@@ -72,23 +76,37 @@ def start_all():
     for i, script in enumerate(scripts):
         log_path = get_log_path(script)
         log_file = open(log_path, "a")
-        print(f"[{datetime.now().isoformat()}] Launching {script} → logging to {log_path}")
-        p = subprocess.Popen(
-            ["python3", script],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            preexec_fn=os.setsid
-        )
+        print(f"[{datetime.now(timezone.utc).isoformat()}] Launching {script} → logging to {log_path}")
+
+        if platform.system() == "Windows":
+            creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+            p = subprocess.Popen(
+                ["python", script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                creationflags=creationflags
+            )
+        else:
+            p = subprocess.Popen(
+                ["python3", script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                preexec_fn=os.setsid
+            )
+
         color = COLORS[i % len(COLORS)]
         thread = threading.Thread(target=stream_output, args=(p, log_file, script, color), daemon=True)
         thread.start()
         processes.append((p, log_file))
 
 def terminate_all():
-    print(f"[{datetime.now().isoformat()}] Shutting down all subprocesses...")
+    print(f"[{datetime.now(timezone.utc).isoformat()}] Shutting down all subprocesses...")
     for p, log_file in processes:
         try:
-            os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+            if platform.system() == "Windows":
+                p.terminate()
+            else:
+                os.killpg(os.getpgid(p.pid), signal.SIGTERM)
         except Exception as e:
             print(f"Failed to terminate {p.pid}: {e}")
         log_file.close()
@@ -105,12 +123,13 @@ def main_loop():
     while True:
         wait_for_internet()
         sync_system_time()
+        print(f"[{datetime.now(timezone.utc).isoformat()}] Starting all subprocesses...")
         start_all()
 
         while True:
             time.sleep(600)  # Check every 10 minutes
             if not has_internet():
-                print(f"[{datetime.now().isoformat()}] Lost internet connection. Killing subprocesses and waiting...")
+                print(f"[{datetime.now(timezone.utc).isoformat()}] Lost internet connection. Killing subprocesses and waiting...")
                 terminate_all()
                 break  # Break out of inner loop, go back to waiting for internet
 

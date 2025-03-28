@@ -1,6 +1,9 @@
 from enum import Enum
 
 class Topics(str, Enum):
+    """
+    Enum representing MQTT topics used in the Sea Guard project.
+    """
     GET_LATEST_PICTURES = "GET_LATEST_PICTURES_N"
     SEND_LATEST_PICTURES = "SEND_LATEST_PICTURES"
     PICTURE_TAKEN = "PICTURE_TAKEN"

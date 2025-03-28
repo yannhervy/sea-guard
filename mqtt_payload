@@ -23,4 +23,7 @@ def create_payload(source: str, event: str, data: Optional[Dict[str, Any]] = Non
 
 
 def publish_payload(client, topic: str, payload: MQTTPayload):
-    client.publish(topic, payload.json())
+    try:
+        client.publish(topic, payload.json())
+    except Exception as e:
+        print(f"Failed to publish payload to topic '{topic}': {e}")
