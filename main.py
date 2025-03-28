@@ -1,7 +1,8 @@
-import subprocess
-import signal
 import sys
 import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import subprocess
+import signal
 from datetime import datetime, timedelta, timezone
 import time
 import threading

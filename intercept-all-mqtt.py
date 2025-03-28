@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import logging
 
 import paho.mqtt.client as mqtt
@@ -15,7 +19,7 @@ logging.basicConfig(
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logging.info("Connected to MQTT broker successfully")
-        client.subscribe(Topics.ALL_TOPICS.value)  # Subscribe to all topics
+        client.subscribe("#")  # Subscribe to all topics
     else:
         logging.error(f"Failed to connect, return code {rc}")
 
