@@ -73,6 +73,8 @@ def stream_output(process, log_file, script_name, color):
 
 def start_all():
     ensure_log_dir()
+    # Determine the Python interpreter from the virtual environment
+    venv_python = os.path.join("venv", "bin", "python") if platform.system() != "Windows" else os.path.join("venv", "Scripts", "python.exe")
     for i, script in enumerate(scripts):
         log_path = get_log_path(script)
         log_file = open(log_path, "a")
@@ -81,14 +83,14 @@ def start_all():
         if platform.system() == "Windows":
             creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
             p = subprocess.Popen(
-                ["python", script],
+                [venv_python, script],  # Use the virtual environment's Python
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 creationflags=creationflags
             )
         else:
             p = subprocess.Popen(
-                ["python3", script],
+                [venv_python, script],  # Use the virtual environment's Python
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 preexec_fn=os.setsid
