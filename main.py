@@ -12,7 +12,7 @@ import platform
 scripts = [
     "bot.py",
     "picturemanager.py",
-    "pir-sensor.py",  # Added PIR sensor script
+    "pir_sensor.py",  # Added PIR sensor script
     # "intercept-all-mqtt.py"
 ]
 
