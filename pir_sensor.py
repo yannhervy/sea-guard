@@ -91,3 +91,8 @@ def monitor_pir_sensor():
     finally:
         GPIO.cleanup()
         client.disconnect()
+
+if __name__ == "__main__":
+    setup_mqtt()
+    setup_pir_sensor()
+    monitor_pir_sensor()
