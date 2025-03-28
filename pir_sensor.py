@@ -11,7 +11,12 @@ from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
 # ----------- KONFIGURATION -----------
-PIR_PIN = 17  # GPIO pin for the PIR sensor
+# Physical pin usage:
+# - Pin 2: 5V Power (for powering the PIR sensor)
+# - Pin 6: Ground (for grounding the PIR sensor)
+# - Pin 11: GPIO 17 (used for detecting motion)
+
+PIR_PIN = 17  # GPIO pin for the PIR sensor (physical pin 11)
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_TOPIC_MOTION_DETECTED = Topics.PIR_MOTION_DETECTED.value
