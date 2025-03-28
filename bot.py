@@ -15,6 +15,7 @@ from telegram.ext import (
 )
 import paho.mqtt.client as mqtt
 import nest_asyncio
+from datetime import datetime
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
@@ -188,7 +189,11 @@ async def handle_pir_event(app, payload):
     try:
         data = json.loads(payload)
         event = data.get("event", "UNKNOWN")
-        timestamp = data.get("timestamp", "N/A")
+        timestamp_raw = data.get("timestamp", "N/A")
+        try:
+            timestamp = datetime.fromisoformat(timestamp_raw).strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            timestamp = "Invalid timestamp format"
         message = f"🚨 PIR Sensor Alert: {event} detected at {timestamp}."
         await send_group_push_message(app, text=message)
     except json.JSONDecodeError:
