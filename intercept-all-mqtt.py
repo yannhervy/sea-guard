@@ -1,6 +1,8 @@
 import logging
 
 import paho.mqtt.client as mqtt
+from mqtt_topics import Topics  # Import Topics enum
+from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
 # Configure logging
 logging.basicConfig(
@@ -13,7 +15,7 @@ logging.basicConfig(
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logging.info("Connected to MQTT broker successfully")
-        client.subscribe("#")  # Subscribe to all topics
+        client.subscribe(Topics.ALL_TOPICS.value)  # Subscribe to all topics
     else:
         logging.error(f"Failed to connect, return code {rc}")
 
@@ -29,6 +31,10 @@ def on_disconnect(client, userdata, rc):
 # Callback when a message is received
 def on_message(client, userdata, msg):
     logging.info(f"Topic: {msg.topic}, Message: {msg.payload.decode('utf-8')}")
+    if msg.topic == Topics.PIR_MOTION_DETECTED.value:  # Example usage
+        logging.info("Motion detected event received.")
+        response_payload = create_payload(source="intercept-all-mqtt", event="MOTION_DETECTED_ACK")
+        publish_payload(client, Topics.PIR_MOTION_DETECTED.value, response_payload)  # Use standardized payload
 
 # MQTT client setup
 client = mqtt.Client()

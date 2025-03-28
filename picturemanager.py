@@ -7,6 +7,8 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 import paho.mqtt.client as mqtt
+from mqtt_topics import Topics  # Import Topics enum
+from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
 # ----------- KONFIGURATION -----------
 
@@ -20,8 +22,8 @@ RETENTION_DAYS = 3
 
 MQTT_BROKER = 'localhost'
 MQTT_PORT = 1883
-MQTT_TOPIC_GET = 'GET_LATEST_PICTURES_N'
-MQTT_TOPIC_SEND = 'SEND_LATEST_PICTURES'
+MQTT_TOPIC_GET = Topics.GET_LATEST_PICTURES
+MQTT_TOPIC_SEND = Topics.SEND_LATEST_PICTURES
 
 # ----------- LOGGNING -----------
 
@@ -127,14 +129,14 @@ def get_latest_pictures(n):
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logger.info("Ansluten till MQTT-broker.")
-        client.subscribe(MQTT_TOPIC_GET)
+        client.subscribe(MQTT_TOPIC_GET.value)  # Use enum value
     else:
         logger.error(f"Misslyckades att ansluta till MQTT, rc={rc}")
 
 def on_message(client, userdata, msg):
     logger.info(f"Meddelande mottaget på ämnet '{msg.topic}': {msg.payload.decode()}")
 
-    if msg.topic == MQTT_TOPIC_GET:
+    if msg.topic == MQTT_TOPIC_GET.value:  # Use enum value
         try:
             payload = msg.payload.decode().strip()
             n = int(payload)
@@ -142,9 +144,13 @@ def on_message(client, userdata, msg):
 
             latest_pictures = get_latest_pictures(n)
 
-            response_payload = json.dumps(latest_pictures)
-            client.publish(MQTT_TOPIC_SEND, response_payload)
-            logger.info(f"Skickade {len(latest_pictures)} bilder på ämnet '{MQTT_TOPIC_SEND}'.")
+            response_payload = create_payload(
+                source="picturemanager",
+                event="SEND_LATEST_PICTURES",
+                data={"pictures": latest_pictures}
+            )
+            publish_payload(client, MQTT_TOPIC_SEND.value, response_payload)  # Use standardized payload
+            logger.info(f"Skickade {len(latest_pictures)} bilder på ämnet '{MQTT_TOPIC_SEND.value}'.")
         except Exception as e:
             logger.error(f"Fel vid hantering av meddelande: {e}")
 

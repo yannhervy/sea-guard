@@ -42,6 +42,16 @@ echo "📜 Installerar Python-dependencies från requirements.txt..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
+# Ensure python-dotenv is installed
+pip install python-dotenv
+
+# Install RPi.GPIO for Raspberry Pi
+echo "📡 Installerar RPi.GPIO för PIR-sensorn..."
+if ! pip install RPi.GPIO; then
+    echo "❌ Misslyckades att installera RPi.GPIO."
+    exit 1
+fi
+
 # Avsluta med att visa status
 echo "🚀 Allt klart! Sea Guard är redo att patrullera."
 echo "Tips! Aktivera din venv med: source ~/sea-guard/venv/bin/activate"

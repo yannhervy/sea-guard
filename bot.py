@@ -13,6 +13,8 @@ from telegram.ext import (
 )
 import paho.mqtt.client as mqtt
 import nest_asyncio
+from mqtt_topics import Topics  # Import Topics enum
+from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
 # ----------------------- KONFIGURATION -----------------------
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +28,7 @@ GROUP_CHAT_ID = -4664318067  # Byt till ditt eget ID
 # MQTT-inställningar
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
-MQTT_TOPIC = "sjoboden/events"
+MQTT_TOPIC = Topics.PIR_HEARTBEAT.value  # Example usage of Topics enum
 
 # Global referens till huvudloopen, sätts i main()
 MAIN_LOOP = None
@@ -88,14 +90,14 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     def on_connect(client, userdata, flags, rc):
         logging.info("MQTT: Ansluten till broker (latestphoto)")
-        client.subscribe("SEND_LATEST_PICTURES")
+        client.subscribe(Topics.SEND_LATEST_PICTURES.value)  # Use enum value
 
     def on_message(client, userdata, msg):
         # Denna callback körs i paho-mqtt-tråden
         payload_str = msg.payload.decode()
         logging.info(f"All messages -> topic: '{msg.topic}', payload: '{payload_str}'")
 
-        if msg.topic == "SEND_LATEST_PICTURES":
+        if msg.topic == Topics.SEND_LATEST_PICTURES.value:  # Use enum value
             # Skapa en coroutine som sätter future-resultatet
             async def _resolve():
                 if not future.done():
@@ -112,7 +114,8 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mqtt_client.loop_start()
 
     # 4) Publicera förfrågan (N)
-    mqtt_client.publish("GET_LATEST_PICTURES_N", str(n))
+    request_payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": n})
+    publish_payload(mqtt_client, Topics.GET_LATEST_PICTURES_N.value, request_payload)  # Use standardized payload
 
     try:
         # 5) Vänta asynkront på att future fylls med payload
@@ -176,24 +179,40 @@ async def heartbeat_task(app):
         await send_group_push_message(app, text="💓 Heartbeat")
         await asyncio.sleep(60*60)  # var 60:e minut
 
+async def handle_pir_event(app, payload):
+    """
+    Handles PIR motion events and sends a message to the group chat.
+    """
+    try:
+        data = json.loads(payload)
+        event = data.get("event", "UNKNOWN")
+        timestamp = data.get("timestamp", "N/A")
+        message = f"🚨 PIR Sensor Alert: {event} detected at {timestamp}."
+        await send_group_push_message(app, text=message)
+    except json.JSONDecodeError:
+        logging.error("Failed to decode PIR event payload.")
+
 async def mqtt_subscribe_task(app):
     """
-    Lyssnar (icke-blockerande) på 'sjoboden/events' i bakgrunden
-    och kallar handle_mqtt_event för varje nytt meddelande.
+    Subscribes to MQTT topics and handles incoming messages.
     """
     loop = asyncio.get_running_loop()
 
     def on_connect(client, userdata, flags, rc):
-        logging.info("MQTT: Ansluten till broker (sjoboden/events)")
-        client.subscribe(MQTT_TOPIC)
+        logging.info(f"MQTT: Connected to broker ({MQTT_BROKER}:{MQTT_PORT})")
+        client.subscribe(Topics.PIR_MOTION_DETECTED.value)  # Subscribe to PIR motion detected topic
+        client.subscribe(MQTT_TOPIC)  # Use enum value
 
     def on_message(client, userdata, msg):
         payload = msg.payload.decode()
-        logging.info(f"MQTT: Meddelande mottaget på {msg.topic}: {payload}")
-        asyncio.run_coroutine_threadsafe(
-            handle_mqtt_event(app, msg.topic, payload),
-            loop
-        )
+        logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
+        if msg.topic == Topics.PIR_MOTION_DETECTED.value:
+            asyncio.run_coroutine_threadsafe(handle_pir_event(app, payload), loop)
+        else:
+            asyncio.run_coroutine_threadsafe(
+                handle_mqtt_event(app, msg.topic, payload),
+                loop
+            )
 
     client = mqtt.Client()
     client.on_connect = on_connect
@@ -201,12 +220,11 @@ async def mqtt_subscribe_task(app):
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
     except Exception as e:
-        logging.error(f"Misslyckades att ansluta till MQTT-broker: {e}")
+        logging.error(f"Failed to connect to MQTT broker: {e}")
         return
     client.loop_start()
 
     while True:
-        # Håll tråden igång
         await asyncio.sleep(1)
 
 async def handle_mqtt_event(app, topic, payload):
