@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ----------- MQTT CLIENT -----------
-client = mqtt.Client()
+client = mqtt.Client(protocol=mqtt.MQTTv5)  # Explicitly specify MQTTv5 protocol
 
 def setup_mqtt():
     try:

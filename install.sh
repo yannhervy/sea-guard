@@ -45,6 +45,13 @@ pip install -r requirements.txt
 # Ensure python-dotenv is installed
 pip install python-dotenv
 
+# Install or upgrade paho-mqtt to the latest version
+echo "📡 Installerar eller uppdaterar paho-mqtt till senaste version..."
+if ! pip install --upgrade paho-mqtt; then
+    echo "❌ Misslyckades att installera eller uppdatera paho-mqtt."
+    exit 1
+fi
+
 # Install RPi.GPIO for Raspberry Pi
 echo "📡 Installerar RPi.GPIO för PIR-sensorn..."
 if ! pip install RPi.GPIO; then
