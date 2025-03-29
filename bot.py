@@ -173,6 +173,33 @@ async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande 
     """Skickar ett textmeddelande till gruppchatten."""
     await app.bot.send_message(chat_id=GROUP_CHAT_ID, text=text)
 
+async def send_picture_to_group(app, picture_path):
+    """
+    Sends the specified picture to the Telegram group.
+    """
+    try:
+        with open(picture_path, 'rb') as photo:
+            await app.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
+        logging.info(f"Picture sent to group: {picture_path}")
+    except FileNotFoundError:
+        logging.error(f"Picture not found: {picture_path}")
+        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="Hoppsan! Jag hittade inte bilden. 😢")
+
+async def handle_latest_picture(app, payload):
+    """
+    Handles the latest picture event and sends the picture to the Telegram group.
+    """
+    try:
+        data = json.loads(payload)
+        picture_path = data.get("data", {}).get("path")
+        if picture_path:
+            logging.info(f"Sending latest picture to group: {picture_path}")
+            await send_picture_to_group(app, picture_path)
+        else:
+            logging.error("No picture path found in payload.")
+    except json.JSONDecodeError:
+        logging.error("Failed to decode latest picture payload.")
+
 # ----------------------- BAKGRUNDSUPPGIFTER -----------------------
 
 async def heartbeat_task(app):
@@ -208,6 +235,7 @@ async def mqtt_subscribe_task(app):
     def on_connect(client, userdata, flags, rc):
         logging.info(f"MQTT: Connected to broker ({MQTT_BROKER}:{MQTT_PORT})")
         client.subscribe(Topics.PIR_MOTION_DETECTED.value)  # Subscribe to PIR motion detected topic
+        client.subscribe("LATEST_PICTURE_TAKEN")  # Subscribe to latest picture topic
         client.subscribe(MQTT_TOPIC)  # Use enum value
 
     def on_message(client, userdata, msg):
@@ -215,6 +243,8 @@ async def mqtt_subscribe_task(app):
         logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
         if msg.topic == Topics.PIR_MOTION_DETECTED.value:
             asyncio.run_coroutine_threadsafe(handle_pir_event(app, payload), loop)
+        elif msg.topic == "LATEST_PICTURE_TAKEN":
+            asyncio.run_coroutine_threadsafe(handle_latest_picture(app, payload), loop)
         else:
             asyncio.run_coroutine_threadsafe(
                 handle_mqtt_event(app, msg.topic, payload),

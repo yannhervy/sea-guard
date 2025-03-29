@@ -1,0 +1,79 @@
+# ------------------------------------------
+# === Sea Guard: systemd-tjänstkontroll ===
+# ------------------------------------------
+
+# Starta tjänsten
+sudo systemctl start sea-guard.service
+
+# Stoppa tjänsten
+sudo systemctl stop sea-guard.service
+
+# Starta om tjänsten (om du gjort ändringar i koden)
+sudo systemctl restart sea-guard.service
+
+# Kontrollera status
+sudo systemctl status sea-guard.service
+
+# Se loggar i realtid
+journalctl -u sea-guard.service -f
+
+# Se loggar från senaste boot
+journalctl -u sea-guard.service -b
+
+# Se senaste 100 rader logg
+journalctl -u sea-guard.service -n 100
+
+# Aktivera tjänsten så att den startar vid boot
+sudo systemctl enable sea-guard.service
+
+# Inaktivera (stoppar auto-start vid boot)
+sudo systemctl disable sea-guard.service
+
+# Om du ändrat .service-filen:
+sudo systemctl daemon-reload
+
+# ------------------------------------------
+# === VENV (Python virtual environment) ===
+# ------------------------------------------
+
+# Aktivera venv
+source /home/yann/sea-guard/venv/bin/activate
+
+# Avaktivera venv
+deactivate
+
+# Installera requirements i venv
+pip install -r requirements.txt
+
+# Kolla installerade paket
+pip list
+
+# ------------------------------------------
+# === Python: Testa scriptet manuellt ===
+# ------------------------------------------
+
+# Kör scriptet manuellt i venv
+source /home/yann/sea-guard/venv/bin/activate
+python main.py
+
+# Kör scriptet direkt utan aktivera venv
+/home/yann/sea-guard/venv/bin/python /home/yann/sea-guard/main.py
+
+# ------------------------------------------
+# === Övrigt ===
+# ------------------------------------------
+
+# Kolla nuvarande katalog
+pwd
+
+# Kolla vilken python du använder
+which python
+
+# Kolla GPIO-permission groups (för icke-root körning)
+groups
+
+# Testa att importera RPi.GPIO (felsökning)
+python -c "import RPi.GPIO"
+
+# Redigera tjänstfilen
+sudo nano /etc/systemd/system/sea-guard.service

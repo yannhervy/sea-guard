@@ -13,7 +13,8 @@ scripts = [
     "bot.py",
     "picturemanager.py",
     "pir_sensor.py",
-    "controller.py",  # Added controller script
+    "controller.py",
+    "camera.py",  # Added camera script
     # "intercept-all-mqtt.py"
 ]
 
