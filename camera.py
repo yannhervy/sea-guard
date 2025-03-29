@@ -1,12 +1,10 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+import subprocess
+from pathlib import Path
+from datetime import datetime
 import logging
 import paho.mqtt.client as mqtt
-from datetime import datetime
-from pathlib import Path
-from picamera import PiCamera
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
@@ -39,25 +37,34 @@ def setup_mqtt():
         exit(1)
 
 # ----------- CAMERA SETUP -----------
-camera = PiCamera()
-
 def take_picture():
     """
-    Captures an image, saves it to the PICTURE_FOLDER, and publishes its path.
+    Captures an image using libcamera-still, saves it to the PICTURE_FOLDER, and publishes its path.
     """
     try:
         PICTURE_FOLDER.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         picture_path = PICTURE_FOLDER / f"{timestamp}.jpg"
-        camera.capture(str(picture_path))
+
+        # Use libcamera-still to capture the image
+        command = [
+            "libcamera-still",
+            "-o", str(picture_path),
+            "--width", "1920",  # Set resolution width
+            "--height", "1080",  # Set resolution height
+            "--timeout", "1000"  # Set capture timeout in milliseconds
+        ]
+        subprocess.run(command, check=True)
         logger.info(f"Picture taken and saved to {picture_path}")
 
         # Publish the path of the latest picture
         payload = create_payload(source="camera", event="PICTURE_TAKEN", data={"path": str(picture_path)})
         publish_payload(client, LATEST_PICTURE_TOPIC, payload)
         logger.info(f"Published latest picture path to topic '{LATEST_PICTURE_TOPIC}'")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to take picture with libcamera-still: {e}")
     except Exception as e:
-        logger.error(f"Failed to take picture: {e}")
+        logger.error(f"Unexpected error while taking picture: {e}")
 
 # ----------- CALLBACKS -----------
 def on_connect(client, userdata, flags, rc):
