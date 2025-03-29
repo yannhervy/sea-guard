@@ -79,13 +79,14 @@ def monitor_pir_sensor():
                     logger.info("Rörelse upptäckt!")
                     publish_motion_event("MOTION_DETECTED")
                     motion_detected = True
+                    time.sleep(1)
             else:
                 if motion_detected:
                     logger.info("Rörelse avslutad.")
                     publish_motion_event("MOTION_ENDED")
                     motion_detected = False
 
-            time.sleep(0.1)
+            time.sleep(0.25)
     except KeyboardInterrupt:
         logger.info("Avslutar PIR-sensorövervakning...")
     finally:
