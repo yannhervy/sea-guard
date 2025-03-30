@@ -58,7 +58,7 @@ def take_picture():
         logger.info(f"Picture taken and saved to {picture_path}")
 
         # Publish the path of the latest picture
-        payload = create_payload(source="camera", event="PICTURE_TAKEN", data={"path": str(picture_path)})
+        payload = create_payload(source="camera", event="TAKE_PICTURE", data={"path": str(picture_path)})
         publish_payload(client, LATEST_PICTURE_TOPIC, payload)
         logger.info(f"Published latest picture path to topic '{LATEST_PICTURE_TOPIC}'")
     except subprocess.CalledProcessError as e:
