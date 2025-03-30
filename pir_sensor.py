@@ -28,7 +28,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ----------- MQTT CLIENT -----------
+# ----------- MQTT CLIENT ----------- 
 client = get_mqtt_client()
 if client is None:
     logger.error("Failed to initialize MQTT client. Exiting...")
@@ -77,14 +77,18 @@ def disarm_sensor():
 def monitor_pir_sensor():
     global monitoring
     logger.info("Starting PIR sensor monitoring...")
+    last_state = False  # Track the last state of the PIR sensor (False = no motion, True = motion)
+
     try:
         while True:
-            if monitoring and GPIO.input(PIR_PIN):
-                logger.info("Motion detected!")
-                payload = create_payload(source="pir-sensor", event="MOTION_DETECTED")
-                publish_payload(Topics.PIR_MOTION_DETECTED.value, payload)
-                time.sleep(10)  # Prevent multiple triggers in a short time
-            time.sleep(0.1)
+            if monitoring:
+                current_state = GPIO.input(PIR_PIN)  # Read the current state of the PIR sensor
+                if current_state and not last_state:  # Motion detected (state changed from OFF to ON)
+                    logger.info("Motion detected!")
+                    payload = create_payload(source="pir-sensor", event="MOTION_DETECTED")
+                    publish_payload(Topics.PIR_MOTION_DETECTED.value, payload)
+                last_state = current_state  # Update the last state
+            time.sleep(0.1)  # Polling interval
     except KeyboardInterrupt:
         logger.info("Stopping PIR sensor monitoring...")
     finally:
