@@ -11,11 +11,6 @@ from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
 # ----------- KONFIGURATION -----------
-# Physical pin usage:
-# - Pin 2: 5V Power (for powering the PIR sensor)
-# - Pin 6: Ground (for grounding the PIR sensor)
-# - Pin 11: GPIO 17 (used for detecting motion)
-
 PIR_PIN = 17  # GPIO pin for the PIR sensor (physical pin 11)
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
@@ -38,7 +33,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ----------- MQTT CLIENT -----------
-client = mqtt.Client(protocol=mqtt.MQTTv5)  # Explicitly specify MQTTv5 protocol
+client = mqtt.Client(protocol=mqtt.MQTTv5)
 
 def on_message(client, userdata, msg):
     global monitoring
@@ -84,13 +79,12 @@ def setup_pir_sensor():
 def publish_motion_event(event_type):
     topic = MQTT_TOPIC_MOTION_DETECTED if event_type == "MOTION_DETECTED" else MQTT_TOPIC_MOTION_ENDED
     payload = create_payload(source="pir-sensor", event=event_type)
-    publish_payload(client, topic, payload)  # Use standardized payload
+    publish_payload(client, topic, payload)
     logger.info(f"Published {event_type} to MQTT.")
-    time.sleep(10)  # Wait to prevent multiple events
 
 def monitor_pir_sensor():
     global monitoring
-    logger.info("Startar PIR-sensorövervakning...")
+    logger.info("Starting PIR sensor monitoring...")
     motion_detected = False
     last_heartbeat = time.time()
 
@@ -102,19 +96,19 @@ def monitor_pir_sensor():
                 # Send heartbeat
                 if current_time - last_heartbeat >= HEARTBEAT_INTERVAL:
                     payload = create_payload(source="pir-sensor", event="HEARTBEAT")
-                    publish_payload(client, MQTT_TOPIC_HEARTBEAT, payload)  # Use standardized payload
-                    logger.info("Skickade heartbeat.")
+                    publish_payload(client, MQTT_TOPIC_HEARTBEAT, payload)
+                    logger.info("Sent heartbeat.")
                     last_heartbeat = current_time
 
                 # Check for motion
                 if GPIO.input(PIR_PIN):
                     if not motion_detected:
-                        logger.info("Rörelse upptäckt!")
+                        logger.info("Motion detected!")
                         publish_motion_event("MOTION_DETECTED")
                         motion_detected = True
                 else:
                     if motion_detected:
-                        logger.info("Rörelse avslutad.")
+                        logger.info("Motion ended.")
                         publish_motion_event("MOTION_ENDED")
                         motion_detected = False
 
@@ -122,7 +116,7 @@ def monitor_pir_sensor():
             else:
                 time.sleep(1)  # Sleep while disarmed
     except KeyboardInterrupt:
-        logger.info("Avslutar PIR-sensorövervakning...")
+        logger.info("Stopping PIR sensor monitoring...")
     finally:
         GPIO.cleanup()
         client.disconnect()
