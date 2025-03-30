@@ -36,6 +36,10 @@ MQTT_PORT = 1883
 # Global referens till huvudloopen, sätts i main()
 MAIN_LOOP = None
 
+# Global flags for processing logic
+process_latest_photo = False
+latest_photo_future = None
+
 # ----------------------- KOMMANDON -----------------------
 
 # /start
@@ -109,194 +113,85 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
         payload = create_payload(source="bot", event="TAKE_PICTURE")
         publish_payload(Topics.TAKE_PICTURE.value, payload)  # Use the updated function
         await update.message.reply_text("📸 Tar en bild... Vänta ett ögonblick.")  # Correct response
-        time.sleep(3)  # Add a 3-second delay before sending the picture
-        await latest_photo(update, context)  # Call the latest_photo function to send the picture
         logging.info("Take picture command sent via /takepicture.")
     except Exception as e:
         logging.error(f"Failed to send take picture command: {e}")
         await update.message.reply_text("❌ Misslyckades att ta en bild.")  # Error response
 
-# ----------------------- HANTERA /latestphoto -----------------------
-
+# /latestphoto
 async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Begär N senaste bilder från MQTT och skickar dem till gruppen."""
-    # --- Steg 0: Läs parametern (N) ---
-    # Kommandot kan se ut så här i chatten: "/latestphoto 5"
-    # Standard: 1 (om inget anges eller om det inte är ett tal)
-    cmd_parts = update.message.text.split()
-    if len(cmd_parts) > 1:
-        try:
-            n = int(cmd_parts[1])
-        except ValueError:
-            n = 1
-    else:
-        n = 1
-    
-    # 1) Skapa MQTT-klient
-    mqtt_client = mqtt.Client()
+    """
+    Requests the latest pictures from MQTT and sends them to the group.
+    """
+    global process_latest_photo, latest_photo_future
+    process_latest_photo = True
+    latest_photo_future = asyncio.get_running_loop().create_future()
 
-    # 2) Skapa en Future i huvudloopen som vi ska vänta på
-    future = asyncio.get_running_loop().create_future()
-
-    def on_connect(client, userdata, flags, rc):
-        logging.info("MQTT: Ansluten till broker (latestphoto)")
-        client.subscribe(Topics.SEND_LATEST_PICTURES.value)  # Use enum value
-
-    def on_message(client, userdata, msg):
-        # Denna callback körs i paho-mqtt-tråden
-        payload_str = msg.payload.decode()
-        logging.info(f"All messages -> topic: '{msg.topic}', payload: '{payload_str}'")
-
-        if msg.topic == Topics.SEND_LATEST_PICTURES.value:  # Use enum value
-            # Skapa en coroutine som sätter future-resultatet
-            async def _resolve():
-                if not future.done():
-                    future.set_result(payload_str)
-
-            # Kör coroutinen i huvudloopen (MAIN_LOOP är en global referens i exemplet)
-            asyncio.run_coroutine_threadsafe(_resolve(), MAIN_LOOP)
-
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
-
-    # 3) Kör MQTT i bakgrunden (icke-blockerande)
-    mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    mqtt_client.loop_start()
-
-    # 4) Publicera förfrågan (N)
-    request_payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": n})
-    publish_payload(Topics.GET_LATEST_PICTURES.value, request_payload)  # Use corrected attribute
-
+    # Publish the request for the latest pictures
     try:
-        # 5) Vänta asynkront på att future fylls med payload
-        logging.info(f"Väntar på MQTT-svar för /latestphoto (N={n}) ...")
-        payload = await future
-        logging.info(f"/latestphoto: Fick payload: {payload}")
+        payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": 1})
+        publish_payload(Topics.GET_LATEST_PICTURES.value, payload)
+        logging.info("Published GET_LATEST_PICTURES request.")
+    except Exception as e:
+        logging.error(f"Failed to publish GET_LATEST_PICTURES request: {e}")
+        await update.message.reply_text("❌ Misslyckades att begära senaste bilderna.")
+        return
 
-        # 6) Hantera svaret (en JSON-lista med bildvägar)
-        try:
-            data = json.loads(payload)
-            picture_paths = data.get("data", {}).get("pictures", [])
-            if picture_paths:
-                logging.info(f"Skickar totalt {len(picture_paths)} bilder (begärde {n}).")
-                
-                # Skicka varje bild i tur och ordning till gruppen
-                for path in picture_paths:
-                    await send_group_photo(context, path)
-                    time.sleep(1)  # Add a 1-second delay between sending pictures
-            else:
-                await update.message.reply_text("Ingen bild funnen.")
-        except json.JSONDecodeError:
-            await update.message.reply_text("Fel vid JSON-dekodning av bild.")
+    # Wait for the response
+    try:
+        response = await latest_photo_future
+        picture_paths = json.loads(response).get("data", {}).get("pictures", [])
+        if picture_paths:
+            for path in picture_paths:
+                await send_group_photo(context, path)
+                time.sleep(1)  # Add a 1-second delay between sending pictures
+        else:
+            await update.message.reply_text("Ingen bild funnen.")
+    except Exception as e:
+        logging.error(f"Failed to process latest photo response: {e}")
+        await update.message.reply_text("❌ Misslyckades att hämta senaste bilderna.")
     finally:
-        # 7) Avsluta MQTT
-        mqtt_client.loop_stop()
-        mqtt_client.disconnect()
+        process_latest_photo = False
 
-# ----------------------- FUNKTIONER FÖR ATT SKICKA TILL GRUPP -----------------------
+# ----------------------- MQTT CALLBACKS -----------------------
+
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        logging.info(f"MQTT: Connected to broker ({MQTT_BROKER}:{MQTT_PORT})")
+        # Subscribe to all relevant topics
+        client.subscribe([
+            (Topics.PIR_MOTION_DETECTED.value, 0),
+            (Topics.SEND_LATEST_PICTURES.value, 0)
+        ])
+        logging.info("Subscribed to all relevant topics.")
+    else:
+        logging.error(f"MQTT: Failed to connect to broker, return code {rc}")
+
+def on_message(client, userdata, msg):
+    global process_latest_photo, latest_photo_future
+    payload = msg.payload.decode()
+    logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
+
+    if msg.topic == Topics.SEND_LATEST_PICTURES.value and process_latest_photo:
+        if latest_photo_future and not latest_photo_future.done():
+            latest_photo_future.set_result(payload)
+
+# ----------------------- MAIN: starta bot & tasks -----------------------
 
 async def send_group_photo(context, photo_path):
-    """Skickar en vald bildväg till gruppen via context.bot."""
+    """
+    Sends a photo to the Telegram group.
+    """
     try:
         with open(photo_path, 'rb') as photo:
             await context.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
-        logging.info(f"Bild skickad till gruppen: {photo_path}")
+        logging.info(f"Photo sent to group: {photo_path}")
     except FileNotFoundError:
-        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="3. Hoppsan! Jag hittade inte bilden. 😢")
-        logging.error(f"Bilden saknas: {photo_path}")
-
-async def send_default_photo(app):
-    """Skickar en standardbild (./pics/seahut.jpg) till gruppen via app.bot."""
-    photo_path = './pics/seahut.jpg'
-    try:
-        with open(photo_path, 'rb') as photo:
-            await app.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
-        logging.info(f"Standardbild skickad till gruppen: {photo_path}")
-    except FileNotFoundError:
-        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="4. Hoppsan! Jag hittade inte bilden. 😢")
-        logging.error(f"Bilden saknas: {photo_path}")
-
-async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande till gruppen!"):
-    """Skickar ett textmeddelande till gruppchatten."""
-    await app.bot.send_message(chat_id=GROUP_CHAT_ID, text=text)
-
-async def send_picture_to_group(app, picture_path):
-    """
-    Sends the specified picture to the Telegram group.
-    """
-    try:
-        with open(picture_path, 'rb') as photo:
-            await app.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
-        logging.info(f"Picture sent to group: {picture_path}")
-    except FileNotFoundError:
-        logging.error(f"Picture not found: {picture_path}")
-        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="1. Hoppsan! Jag hittade inte bilden. 😢")
-
-async def handle_latest_picture(app, payload):
-    """
-    Handles the latest picture event and sends the picture to the Telegram group.
-    """
-    try:
-        data = json.loads(payload)
-        picture_path = data.get("data", {}).get("path")
-        if picture_path:
-            logging.info(f"Sending latest picture to group: {picture_path}")
-            await send_picture_to_group(app, picture_path)
-        else:
-            logging.error("No picture path found in payload.")
-    except json.JSONDecodeError:
-        logging.error("Failed to decode latest picture payload.")
-
-async def handle_pir_event(app, payload):
-    """
-    Handles PIR motion events and sends a message to the group chat.
-    """
-    try:
-        data = json.loads(payload)
-        event = data.get("event", "UNKNOWN")
-        timestamp_raw = data.get("timestamp", "N/A")
-        try:
-            timestamp = datetime.fromisoformat(timestamp_raw).strftime("%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            timestamp = "Invalid timestamp format"
-        message = f"🚨 PIR Sensor Alert: {event} detected at {timestamp}."
-        await send_group_push_message(app, text=message)
-    except json.JSONDecodeError:
-        logging.error("Failed to decode PIR event payload.")
-
-async def mqtt_subscribe_task(app):
-    """
-    Subscribes to MQTT topics and handles incoming messages.
-    """
-    loop = asyncio.get_running_loop()
-
-    def on_connect(client, userdata, flags, rc):
-        logging.info(f"MQTT: Connected to broker ({MQTT_BROKER}:{MQTT_PORT})")
-        client.subscribe(Topics.PIR_MOTION_DETECTED.value)  # Subscribe to PIR motion detected topic
-        client.subscribe(Topics.SEND_LATEST_PICTURES.value)  # Subscribe to latest picture topic
-
-    def on_message(client, userdata, msg):
-        payload = msg.payload.decode()
-        logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
-        if msg.topic == Topics.PIR_MOTION_DETECTED.value:
-            asyncio.run_coroutine_threadsafe(handle_pir_event(app, payload), loop)
-        elif msg.topic == Topics.SEND_LATEST_PICTURES.value:
-            asyncio.run_coroutine_threadsafe(handle_latest_picture(app, payload), loop)
-
-    client = mqtt.Client()
-    client.on_connect = on_connect
-    client.on_message = on_message
-    try:
-        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        logging.error(f"Photo not found: {photo_path}")
+        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Hoppsan! Jag hittade inte bilden. 😢")
     except Exception as e:
-        logging.error(f"Failed to connect to MQTT broker: {e}")
-        return
-    client.loop_start()
-
-    while True:
-        await asyncio.sleep(1)
-
-# ----------------------- MAIN: starta bot & tasks -----------------------
+        logging.error(f"Failed to send photo to group: {e}")
+        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Misslyckades att skicka bilden.")
 
 async def main():
     global MAIN_LOOP
@@ -314,42 +209,20 @@ async def main():
     app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
     app.add_handler(CommandHandler("takepicture", take_picture_command))  # Add /takepicture command
 
+    # MQTT client setup
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    client.loop_start()
+
     async with app:
         # Skicka ett meddelande till gruppen när boten startar
         await send_group_push_message(app, text="🚀 Botten har startat!")
 
-        # Starta bakgrundsuppgifter
-        asyncio.create_task(mqtt_subscribe_task(app))
-
         print("🚀 Botten är igång! Tryck Ctrl+C för att stoppa.")
         await app.run_polling(poll_interval=5, timeout=30)
 
-# ----------------------- INITIERING & KÖRNING -----------------------
-
 if __name__ == '__main__':
     nest_asyncio.apply()  # Möjliggör nested asyncio-loops om det behövs
-    loop = asyncio.get_event_loop()
-
-    def shutdown_handler():
-        print("\n🚦 Avslutar boten...")
-        for task in asyncio.all_tasks(loop):
-            task.cancel()
-        loop.stop()
-
-    signal.signal(signal.SIGINT, lambda sig, frame: shutdown_handler())
-
-    try:
-        loop.run_until_complete(main())
-    except asyncio.CancelledError:
-        pass
-    except KeyboardInterrupt:
-        print("\n🚦 Botten avbröts med CTRL+C.")
-    finally:
-        tasks = asyncio.all_tasks(loop)
-        for task in tasks:
-            task.cancel()
-        try:
-            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-        except asyncio.CancelledError:
-            pass
-        print("✅ Botten har stängts av.")
+    asyncio.run(main())
