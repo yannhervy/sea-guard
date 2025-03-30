@@ -10,13 +10,18 @@ from mqtt_payload import create_payload, publish_payload  # Import helper functi
 # ----------- KONFIGURATION -----------
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+LOG_FILE = os.path.join(LOG_DIR, "controller.log")
+
+# Ensure the logs directory exists
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # ----------- LOGGNING -----------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("controller.log"),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler()
     ]
 )
