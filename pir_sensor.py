@@ -49,16 +49,28 @@ def on_message(client, userdata, msg):
     elif msg.topic == Topics.PIR_DISARM.value:
         monitoring = False
         logger.info("PIR sensor monitoring disarmed.")
+    elif msg.topic == Topics.PIR_MOTION_DETECTED.value:
+        logger.info("Motion detected event received.")
+    elif msg.topic == Topics.PIR_MOTION_ENDED.value:
+        logger.info("Motion ended event received.")
+    elif msg.topic == Topics.PIR_HEARTBEAT.value:
+        logger.info("Heartbeat event received.")
     else:
         logger.warning(f"Unhandled topic: {msg.topic}")
 
 def setup_mqtt():
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        # Subscribe to ARM and DISARM topics
-        client.subscribe([(Topics.PIR_ARM.value, 0), (Topics.PIR_DISARM.value, 0)])
+        # Subscribe to all relevant topics
+        client.subscribe([
+            (Topics.PIR_ARM.value, 0),
+            (Topics.PIR_DISARM.value, 0),
+            (Topics.PIR_MOTION_DETECTED.value, 0),
+            (Topics.PIR_MOTION_ENDED.value, 0),
+            (Topics.PIR_HEARTBEAT.value, 0)
+        ])
         client.on_message = on_message
-        logger.info(f"Subscribed to topics: {Topics.PIR_ARM.value}, {Topics.PIR_DISARM.value}")
+        logger.info(f"Subscribed to topics: {', '.join([t.value for t in Topics])}")
         logger.info(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
     except Exception as e:
         logger.error(f"Failed to connect to MQTT broker: {e}")
