@@ -5,6 +5,7 @@ import logging
 import asyncio
 import signal
 import json
+import time  # Import time module for sleep
 
 from dotenv import load_dotenv
 from telegram import Update
@@ -180,6 +181,7 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Skicka varje bild i tur och ordning till gruppen
                 for path in picture_paths:
                     await send_group_photo(context, path)
+                    time.sleep(1)  # Add a 1-second delay between sending pictures
             else:
                 await update.message.reply_text("Ingen bild funnen.")
         except json.JSONDecodeError:
