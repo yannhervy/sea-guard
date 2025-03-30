@@ -163,7 +163,7 @@ def handle_get_latest_pictures(payload):
             event="SEND_LATEST_PICTURES",
             data={"pictures": latest_pictures}
         )
-        publish_payload(client, MQTT_TOPIC_SEND.value, response_payload)  # Use standardized payload
+        publish_payload(MQTT_TOPIC_SEND.value, response_payload)  # Use standardized payload
         logger.info(f"Skickade {len(latest_pictures)} bilder på ämnet '{MQTT_TOPIC_SEND.value}'.")
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse payload as JSON: {e}")
