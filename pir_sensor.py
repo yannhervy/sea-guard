@@ -73,7 +73,7 @@ def setup_pir_sensor():
 def publish_motion_event(event_type):
     topic = MQTT_TOPIC_MOTION_DETECTED if event_type == "MOTION_DETECTED" else MQTT_TOPIC_MOTION_ENDED
     payload = create_payload(source="pir-sensor", event=event_type)
-    publish_payload(client, topic, payload)
+    publish_payload(topic, payload)
     logger.info(f"Published {event_type} to MQTT.")
 
 def monitor_pir_sensor():
