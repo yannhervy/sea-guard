@@ -78,7 +78,7 @@ async def arm_pir_sensor(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     try:
         payload = create_payload(source="bot", event="ARM_PIR_SENSOR")
-        publish_payload(mqtt.Client(), Topics.PIR_ARM.value, payload)  # Use Topics enum
+        publish_payload(Topics.PIR_ARM.value, payload)  # Use Topics enum
         await update.message.reply_text("🔒 PIR-sensorn är nu aktiverad.")
         logging.info(f"Published ARM message to topic: {Topics.PIR_ARM.value}")
     except Exception as e:
@@ -92,7 +92,7 @@ async def disarm_pir_sensor(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     try:
         payload = create_payload(source="bot", event="DISARM_PIR_SENSOR")
-        publish_payload(mqtt.Client(), Topics.PIR_DISARM.value, payload)  # Use Topics enum
+        publish_payload(Topics.PIR_DISARM.value, payload)  # Use Topics enum
         await update.message.reply_text("🔓 PIR-sensorn är nu avaktiverad.")
         logging.info(f"Published DISARM message to topic: {Topics.PIR_DISARM.value}")
     except Exception as e:
