@@ -173,15 +173,14 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # 6) Hantera svaret (en JSON-lista med bildvägar)
         try:
-            image_paths = json.loads(payload)
-            if image_paths:
-                # Om det finns färre bilder än N, får vi helt enkelt färre
-                logging.info(f"Skickar totalt {len(image_paths)} bilder (begärde {n}).")
+            data = json.loads(payload)
+            picture_paths = data.get("data", {}).get("pictures", [])
+            if picture_paths:
+                logging.info(f"Skickar totalt {len(picture_paths)} bilder (begärde {n}).")
                 
                 # Skicka varje bild i tur och ordning till gruppen
-                for path in image_paths:
+                for path in picture_paths:
                     await send_group_photo(context, path)
-                
             else:
                 await update.message.reply_text("Ingen bild funnen.")
         except json.JSONDecodeError:
