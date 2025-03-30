@@ -193,6 +193,16 @@ async def send_group_photo(context, photo_path):
         logging.error(f"Failed to send photo to group: {e}")
         await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Misslyckades att skicka bilden.")
 
+async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande till gruppen!"):
+    """
+    Sends a text message to the Telegram group.
+    """
+    try:
+        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text=text)
+        logging.info(f"Push message sent to group: {text}")
+    except Exception as e:
+        logging.error(f"Failed to send push message to group: {e}")
+
 async def main():
     global MAIN_LOOP
     app = ApplicationBuilder().token(TOKEN).build()
