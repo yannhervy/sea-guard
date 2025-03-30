@@ -70,6 +70,7 @@ def publish_motion_event(event_type):
     payload = create_payload(source="pir-sensor", event=event_type)
     publish_payload(client, topic, payload)  # Use standardized payload
     logger.info(f"Published {event_type} to MQTT.")
+    time.sleep(10)  # Wait to prevent multiple events
 
 def monitor_pir_sensor():
     global monitoring
