@@ -81,7 +81,7 @@ async def arm_pir_sensor(update: Update, context: ContextTypes.DEFAULT_TYPE):
         payload = create_payload(source="bot", event="ARM_PIR_SENSOR")
         publish_payload(mqtt.Client(), Topics.PIR_ARM.value, payload)  # Use Topics enum
         await update.message.reply_text("🔒 PIR-sensorn är nu aktiverad.")
-        logging.info("PIR sensor armed via /arm command.")
+        logging.info(f"Published ARM message to topic: {Topics.PIR_ARM.value}")
     except Exception as e:
         logging.error(f"Failed to arm PIR sensor: {e}")
         await update.message.reply_text("❌ Misslyckades att aktivera PIR-sensorn.")
@@ -95,7 +95,7 @@ async def disarm_pir_sensor(update: Update, context: ContextTypes.DEFAULT_TYPE):
         payload = create_payload(source="bot", event="DISARM_PIR_SENSOR")
         publish_payload(mqtt.Client(), Topics.PIR_DISARM.value, payload)  # Use Topics enum
         await update.message.reply_text("🔓 PIR-sensorn är nu avaktiverad.")
-        logging.info("PIR sensor disarmed via /disarm command.")
+        logging.info(f"Published DISARM message to topic: {Topics.PIR_DISARM.value}")
     except Exception as e:
         logging.error(f"Failed to disarm PIR sensor: {e}")
         await update.message.reply_text("❌ Misslyckades att avaktivera PIR-sensorn.")
@@ -107,7 +107,7 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
     """
     try:
         payload = create_payload(source="bot", event="TAKE_PICTURE")
-        publish_payload(mqtt.Client(), Topics.PICTURE_TAKEN.value, payload)  # Use Topics enum
+        publish_payload(mqtt.Client(), Topics.TAKE_PICTURE.value, payload)  # Use Topics enum
         await update.message.reply_text("📸 Tar en bild... Vänta ett ögonblick.")
         logging.info("Take picture command sent via /takepicture.")
     except Exception as e:

@@ -71,13 +71,13 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logger.info("Successfully connected to MQTT broker.")
         # Subscribe to the TAKE_PICTURE topic
-        client.subscribe(Topics.PICTURE_TAKEN.value)
+        client.subscribe(Topics.TAKE_PICTURE.value)
     else:
         logger.error(f"Failed to connect to MQTT broker, return code {rc}")
 
 def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
-    if msg.topic == Topics.PICTURE_TAKEN.value:
+    if msg.topic == Topics.TAKE_PICTURE.value:
         logger.info("TAKE_PICTURE command received. Capturing image...")
         take_picture()
 
