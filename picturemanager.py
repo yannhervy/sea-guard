@@ -142,20 +142,33 @@ def on_message(client, userdata, msg):
     if msg.topic == MQTT_TOPIC_GET.value:  # Use enum value
         try:
             payload = msg.payload.decode().strip()
-            n = int(payload)
-            logger.info(f"Hämtar de {n} senaste bilderna...")
-
-            latest_pictures = get_latest_pictures(n)
-
-            response_payload = create_payload(
-                source="picturemanager",
-                event="SEND_LATEST_PICTURES",
-                data={"pictures": latest_pictures}
-            )
-            publish_payload(client, MQTT_TOPIC_SEND.value, response_payload)  # Use standardized payload
-            logger.info(f"Skickade {len(latest_pictures)} bilder på ämnet '{MQTT_TOPIC_SEND.value}'.")
+            handle_get_latest_pictures(payload)
         except Exception as e:
             logger.error(f"Fel vid hantering av meddelande: {e}")
+
+def handle_get_latest_pictures(payload):
+    """
+    Handles the GET_LATEST_PICTURES message.
+    """
+    try:
+        # Parse the payload as JSON
+        data = json.loads(payload)
+        count = data.get("data", {}).get("count", 1)  # Default to 1 if count is missing
+        logger.info(f"Request received for the latest {count} pictures.")
+
+        latest_pictures = get_latest_pictures(count)
+
+        response_payload = create_payload(
+            source="picturemanager",
+            event="SEND_LATEST_PICTURES",
+            data={"pictures": latest_pictures}
+        )
+        publish_payload(client, MQTT_TOPIC_SEND.value, response_payload)  # Use standardized payload
+        logger.info(f"Skickade {len(latest_pictures)} bilder på ämnet '{MQTT_TOPIC_SEND.value}'.")
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse payload as JSON: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
 
 # ----------- TASK LOOPAR -----------
 
@@ -166,6 +179,7 @@ def run_daily_cleanup():
         time.sleep(24 * 60 * 60)
 
 def start_mqtt_client():
+    global client
     client = mqtt.Client()
 
     client.on_connect = on_connect
