@@ -3,10 +3,9 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 import json
-import paho.mqtt.client as mqtt
+from mqtt_client import get_mqtt_client  # Import the singleton MQTT client
 
 logger = logging.getLogger(__name__)
-
 
 class MQTTPayload(BaseModel):
     source: str
@@ -17,7 +16,6 @@ class MQTTPayload(BaseModel):
     class Config:
         extra = "allow"
 
-
 def create_payload(source: str, event: str, data: Optional[Dict[str, Any]] = None) -> MQTTPayload:
     return MQTTPayload(
         source=source,
@@ -25,21 +23,15 @@ def create_payload(source: str, event: str, data: Optional[Dict[str, Any]] = Non
         data=data or {}
     )
 
-
-def publish_payload(client, topic: str, payload: MQTTPayload):
+def publish_payload(topic: str, payload: MQTTPayload):
     """
     Publishes a payload to a given MQTT topic.
-    Checks the connection status of the client before publishing.
+    Uses the singleton MQTT client.
     """
-    if not client.is_connected():
-        logger.error(f"MQTT client is not connected. Unable to publish to topic '{topic}'.")
-        try:
-            logger.info("Attempting to reconnect MQTT client...")
-            client.reconnect()
-            logger.info("Reconnected successfully.")
-        except Exception as e:
-            logger.error(f"Failed to reconnect MQTT client: {e}")
-            return
+    client = get_mqtt_client()
+    if client is None:
+        logger.error(f"MQTT client is not available. Unable to publish to topic '{topic}'.")
+        return
 
     try:
         client.publish(topic, payload.json())

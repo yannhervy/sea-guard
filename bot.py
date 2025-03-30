@@ -106,7 +106,7 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
     """
     try:
         payload = create_payload(source="bot", event="TAKE_PICTURE")
-        publish_payload(mqtt.Client(), Topics.TAKE_PICTURE.value, payload)  # Use Topics enum
+        publish_payload(Topics.TAKE_PICTURE.value, payload)  # Use the updated function
         await update.message.reply_text("📸 Tar en bild... Vänta ett ögonblick.")
         logging.info("Take picture command sent via /takepicture.")
     except Exception as e:
