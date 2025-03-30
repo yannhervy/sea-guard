@@ -22,7 +22,7 @@ def create_payload(source: str, event: str, data: Optional[Dict[str, Any]] = Non
         event=event,
         data=data or {}
     )
-def publish_payload(client, topic: str, payload: MQTTPayload):
+def publish_payload_with_client(client, topic: str, payload: MQTTPayload):
     if client is None:
         logger.error(f"MQTT client is not available. Unable to publish to topic '{topic}'.")
         return
@@ -40,5 +40,5 @@ def publish_payload(topic: str, payload: MQTTPayload):
     Uses the singleton MQTT client.
     """
     client = get_mqtt_client()
-    publish_payload(client, topic, payload)
+    publish_payload_with_client(client, topic, payload)
     

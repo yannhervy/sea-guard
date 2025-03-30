@@ -59,7 +59,7 @@ def take_picture():
 
         # Publish the path of the latest picture
         payload = create_payload(source="camera", event="TAKE_PICTURE", data={"path": str(picture_path)})
-        publish_payload(Topics.SEND_LATEST_PICTURES.value, payload)  # Updated to match the new function signature
+        publish_payload(Topics.SEND_LATEST_PICTURES.value, payload)  # Correct version of publish_payload
         logger.info(f"Published latest picture path to topic '{Topics.SEND_LATEST_PICTURES.value}'")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to take picture with libcamera-still: {e}")
