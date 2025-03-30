@@ -6,7 +6,6 @@ import RPi.GPIO as GPIO
 import time
 import logging
 import paho.mqtt.client as mqtt
-from datetime import datetime
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
@@ -16,8 +15,6 @@ MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_TOPIC_MOTION_DETECTED = Topics.PIR_MOTION_DETECTED.value
 MQTT_TOPIC_MOTION_ENDED = Topics.PIR_MOTION_ENDED.value
-MQTT_TOPIC_HEARTBEAT = Topics.PIR_HEARTBEAT.value
-HEARTBEAT_INTERVAL = 60  # Heartbeat interval in seconds
 
 monitoring = True  # Start monitoring by default
 
@@ -48,8 +45,6 @@ def on_message(client, userdata, msg):
         logger.info("Motion detected event received.")
     elif msg.topic == Topics.PIR_MOTION_ENDED.value:
         logger.info("Motion ended event received.")
-    elif msg.topic == Topics.PIR_HEARTBEAT.value:
-        logger.info("Heartbeat event received.")
     else:
         logger.warning(f"Unhandled topic: {msg.topic}")
 
@@ -61,8 +56,7 @@ def setup_mqtt():
             (Topics.PIR_ARM.value, 0),
             (Topics.PIR_DISARM.value, 0),
             (Topics.PIR_MOTION_DETECTED.value, 0),
-            (Topics.PIR_MOTION_ENDED.value, 0),
-            (Topics.PIR_HEARTBEAT.value, 0)
+            (Topics.PIR_MOTION_ENDED.value, 0)
         ])
         client.on_message = on_message
         logger.info(f"Subscribed to topics: {', '.join([t.value for t in Topics])}")
@@ -86,20 +80,10 @@ def monitor_pir_sensor():
     global monitoring
     logger.info("Starting PIR sensor monitoring...")
     motion_detected = False
-    last_heartbeat = time.time()
 
     try:
         while True:
             if monitoring:
-                current_time = time.time()
-
-                # Send heartbeat
-                if current_time - last_heartbeat >= HEARTBEAT_INTERVAL:
-                    payload = create_payload(source="pir-sensor", event="HEARTBEAT")
-                    publish_payload(client, MQTT_TOPIC_HEARTBEAT, payload)
-                    logger.info("Sent heartbeat.")
-                    last_heartbeat = current_time
-
                 # Check for motion
                 if GPIO.input(PIR_PIN):
                     if not motion_detected:

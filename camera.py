@@ -12,7 +12,7 @@ from mqtt_payload import create_payload, publish_payload  # Import helper functi
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 PICTURE_FOLDER = Path(__file__).parent / "pics"
-LATEST_PICTURE_TOPIC = "LATEST_PICTURE_TAKEN"  # Define topic for latest picture
+LATEST_PICTURE_TOPIC = Topics.SEND_LATEST_PICTURES.value  # Use Topics enum
 
 # ----------- LOGGNING -----------
 logging.basicConfig(

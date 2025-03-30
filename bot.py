@@ -31,7 +31,6 @@ GROUP_CHAT_ID = -4664318067  # Byt till ditt eget ID
 # MQTT-inställningar
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
-MQTT_TOPIC = Topics.PIR_HEARTBEAT.value  # Example usage of Topics enum
 
 # Global referens till huvudloopen, sätts i main()
 MAIN_LOOP = None
@@ -244,15 +243,6 @@ async def handle_latest_picture(app, payload):
     except json.JSONDecodeError:
         logging.error("Failed to decode latest picture payload.")
 
-# ----------------------- BAKGRUNDSUPPGIFTER -----------------------
-
-async def heartbeat_task(app):
-    """Skickar 'heartbeat' en gång per timme."""
-    while True:
-        logging.info("Skickar heartbeat-meddelande")
-        await send_group_push_message(app, text="💓 Heartbeat")
-        await asyncio.sleep(60*60)  # var 60:e minut
-
 async def handle_pir_event(app, payload):
     """
     Handles PIR motion events and sends a message to the group chat.
@@ -279,21 +269,15 @@ async def mqtt_subscribe_task(app):
     def on_connect(client, userdata, flags, rc):
         logging.info(f"MQTT: Connected to broker ({MQTT_BROKER}:{MQTT_PORT})")
         client.subscribe(Topics.PIR_MOTION_DETECTED.value)  # Subscribe to PIR motion detected topic
-        client.subscribe("LATEST_PICTURE_TAKEN")  # Subscribe to latest picture topic
-        client.subscribe(MQTT_TOPIC)  # Use enum value
+        client.subscribe(Topics.SEND_LATEST_PICTURES.value)  # Subscribe to latest picture topic
 
     def on_message(client, userdata, msg):
         payload = msg.payload.decode()
         logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
         if msg.topic == Topics.PIR_MOTION_DETECTED.value:
             asyncio.run_coroutine_threadsafe(handle_pir_event(app, payload), loop)
-        elif msg.topic == "LATEST_PICTURE_TAKEN":
+        elif msg.topic == Topics.SEND_LATEST_PICTURES.value:
             asyncio.run_coroutine_threadsafe(handle_latest_picture(app, payload), loop)
-        else:
-            asyncio.run_coroutine_threadsafe(
-                handle_mqtt_event(app, msg.topic, payload),
-                loop
-            )
 
     client = mqtt.Client()
     client.on_connect = on_connect
@@ -307,14 +291,6 @@ async def mqtt_subscribe_task(app):
 
     while True:
         await asyncio.sleep(1)
-
-async def handle_mqtt_event(app, topic, payload):
-    """
-    Hanterar meddelanden som kommer in på topic: "sjoboden/events".
-    Skickar en pushtext + en standardbild till gruppen.
-    """
-    # await send_group_push_message(app, text=f"📡 MQTT event på {topic}: {payload}")
-    # await send_default_photo(app)
 
 # ----------------------- MAIN: starta bot & tasks -----------------------
 
@@ -339,7 +315,6 @@ async def main():
         await send_group_push_message(app, text="🚀 Botten har startat!")
 
         # Starta bakgrundsuppgifter
-        asyncio.create_task(heartbeat_task(app))
         asyncio.create_task(mqtt_subscribe_task(app))
 
         print("🚀 Botten är igång! Tryck Ctrl+C för att stoppa.")
