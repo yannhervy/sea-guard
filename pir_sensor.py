@@ -30,9 +30,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ----------- MQTT CLIENT -----------
-client = mqtt.Client(protocol=mqtt.MQTTv5)
+client = mqtt.Client()
 
 def on_message(client, userdata, msg):
+    logger.info("PIR ON_MESSAGE")
     global monitoring
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.PIR_ARM.value:

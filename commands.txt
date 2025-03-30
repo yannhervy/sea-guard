@@ -79,4 +79,5 @@ python -c "import RPi.GPIO"
 sudo nano /etc/systemd/system/sea-guard.service
 
 
-# mosquitto_pub -h localhost -t GET_LATEST_PICTURES_N -m '{"source":"bot","event":"GET_LATEST_PICTURES","timestamp":"2025-03-30T14:27:53.731430","data":{"count":3}}'
+mosquitto_pub -h localhost -t GET_LATEST_PICTURES_N -m '{"source":"bot","event":"GET_LATEST_PICTURES","timestamp":"2025-03-30T14:27:53.731430","data":{"count":3}}'
+mosquitto_pub -h localhost -t PIR/DISARM -m '{"source":"bot","event":"PIR/DISARM","timestamp":"2025-03-30T14:27:53.731430","data":{"count":3}}'
