@@ -55,6 +55,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/photo - Skickar en bild på sjöboden 🏝️\n"
         "/latestphoto - Skickar den senaste bilden 📸\n"
         "/latestphoto - Skickar de 3 senaste bilderna 📸📸📸\n"
+        "/arm - Aktiverar PIR-sensorn 🔒\n"
+        "/disarm - Avaktiverar PIR-sensorn 🔓\n"
+        "/takepicture - Tar en ny bild 📸\n"
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
 
@@ -68,6 +71,48 @@ async def send_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except FileNotFoundError:
         await update.message.reply_text("Hoppsan! Jag hittade inte bilden. 😢")
         logging.error(f"Bilden saknas: {photo_path}")
+
+# /arm
+async def arm_pir_sensor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Arms the PIR sensor by publishing to the ARM_TOPIC.
+    """
+    try:
+        payload = create_payload(source="bot", event="ARM_PIR_SENSOR")
+        publish_payload(mqtt.Client(), Topics.PIR_ARM.value, payload)  # Use Topics enum
+        await update.message.reply_text("🔒 PIR-sensorn är nu aktiverad.")
+        logging.info("PIR sensor armed via /arm command.")
+    except Exception as e:
+        logging.error(f"Failed to arm PIR sensor: {e}")
+        await update.message.reply_text("❌ Misslyckades att aktivera PIR-sensorn.")
+
+# /disarm
+async def disarm_pir_sensor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Disarms the PIR sensor by publishing to the DISARM_TOPIC.
+    """
+    try:
+        payload = create_payload(source="bot", event="DISARM_PIR_SENSOR")
+        publish_payload(mqtt.Client(), Topics.PIR_DISARM.value, payload)  # Use Topics enum
+        await update.message.reply_text("🔓 PIR-sensorn är nu avaktiverad.")
+        logging.info("PIR sensor disarmed via /disarm command.")
+    except Exception as e:
+        logging.error(f"Failed to disarm PIR sensor: {e}")
+        await update.message.reply_text("❌ Misslyckades att avaktivera PIR-sensorn.")
+
+# /takepicture
+async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Sends a command to the camera to take a picture and sends the picture to the Telegram group.
+    """
+    try:
+        payload = create_payload(source="bot", event="TAKE_PICTURE")
+        publish_payload(mqtt.Client(), Topics.PICTURE_TAKEN.value, payload)  # Use Topics enum
+        await update.message.reply_text("📸 Tar en bild... Vänta ett ögonblick.")
+        logging.info("Take picture command sent via /takepicture.")
+    except Exception as e:
+        logging.error(f"Failed to send take picture command: {e}")
+        await update.message.reply_text("❌ Misslyckades att ta en bild.")
 
 # ----------------------- HANTERA /latestphoto -----------------------
 
@@ -286,6 +331,9 @@ async def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("photo", send_photo))
     app.add_handler(CommandHandler("latestphoto", latest_photo))
+    app.add_handler(CommandHandler("arm", arm_pir_sensor))
+    app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
+    app.add_handler(CommandHandler("takepicture", take_picture_command))  # Add /takepicture command
 
     async with app:
         # Skicka ett meddelande till gruppen när boten startar

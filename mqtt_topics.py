@@ -11,6 +11,8 @@ class Topics(str, Enum):
     PIR_MOTION_DETECTED = "PIR/MOTION_DETECTED"
     PIR_MOTION_ENDED = "PIR/MOTION_ENDED"
     PIR_HEARTBEAT = "PIR/HEARTBEAT"
+    PIR_ARM = "PIR/ARM"  # Topic to arm the PIR sensor
+    PIR_DISARM = "PIR/DISARM"  # Topic to disarm the PIR sensor
 
 
 # from mqtt_topics import GET_LATEST_PICTURES, SEND_LATEST_PICTURES

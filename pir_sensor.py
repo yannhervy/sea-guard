@@ -24,6 +24,8 @@ MQTT_TOPIC_MOTION_ENDED = Topics.PIR_MOTION_ENDED.value
 MQTT_TOPIC_HEARTBEAT = Topics.PIR_HEARTBEAT.value
 HEARTBEAT_INTERVAL = 60  # Heartbeat interval in seconds
 
+monitoring = True  # Start monitoring by default
+
 # ----------- LOGGNING -----------
 logging.basicConfig(
     level=logging.INFO,
@@ -38,9 +40,21 @@ logger = logging.getLogger(__name__)
 # ----------- MQTT CLIENT -----------
 client = mqtt.Client(protocol=mqtt.MQTTv5)  # Explicitly specify MQTTv5 protocol
 
+def on_message(client, userdata, msg):
+    global monitoring
+    logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
+    if msg.topic == Topics.PIR_ARM.value:
+        monitoring = True
+        logger.info("PIR sensor monitoring armed.")
+    elif msg.topic == Topics.PIR_DISARM.value:
+        monitoring = False
+        logger.info("PIR sensor monitoring disarmed.")
+
 def setup_mqtt():
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        client.subscribe([(Topics.PIR_ARM.value, 0), (Topics.PIR_DISARM.value, 0)])
+        client.on_message = on_message
         logger.info(f"Ansluten till MQTT-broker på {MQTT_BROKER}:{MQTT_PORT}")
     except Exception as e:
         logger.error(f"Misslyckades att ansluta till MQTT-broker: {e}")
@@ -58,35 +72,38 @@ def publish_motion_event(event_type):
     logger.info(f"Published {event_type} to MQTT.")
 
 def monitor_pir_sensor():
+    global monitoring
     logger.info("Startar PIR-sensorövervakning...")
     motion_detected = False
     last_heartbeat = time.time()
 
     try:
         while True:
-            current_time = time.time()
+            if monitoring:
+                current_time = time.time()
 
-            # Send heartbeat
-            if current_time - last_heartbeat >= HEARTBEAT_INTERVAL:
-                payload = create_payload(source="pir-sensor", event="HEARTBEAT")
-                publish_payload(client, MQTT_TOPIC_HEARTBEAT, payload)  # Use standardized payload
-                logger.info("Skickade heartbeat.")
-                last_heartbeat = current_time
+                # Send heartbeat
+                if current_time - last_heartbeat >= HEARTBEAT_INTERVAL:
+                    payload = create_payload(source="pir-sensor", event="HEARTBEAT")
+                    publish_payload(client, MQTT_TOPIC_HEARTBEAT, payload)  # Use standardized payload
+                    logger.info("Skickade heartbeat.")
+                    last_heartbeat = current_time
 
-            # Check for motion
-            if GPIO.input(PIR_PIN):
-                if not motion_detected:
-                    logger.info("Rörelse upptäckt!")
-                    publish_motion_event("MOTION_DETECTED")
-                    motion_detected = True
-                    time.sleep(1)
+                # Check for motion
+                if GPIO.input(PIR_PIN):
+                    if not motion_detected:
+                        logger.info("Rörelse upptäckt!")
+                        publish_motion_event("MOTION_DETECTED")
+                        motion_detected = True
+                else:
+                    if motion_detected:
+                        logger.info("Rörelse avslutad.")
+                        publish_motion_event("MOTION_ENDED")
+                        motion_detected = False
+
+                time.sleep(0.1)
             else:
-                if motion_detected:
-                    logger.info("Rörelse avslutad.")
-                    publish_motion_event("MOTION_ENDED")
-                    motion_detected = False
-
-            time.sleep(0.25)
+                time.sleep(1)  # Sleep while disarmed
     except KeyboardInterrupt:
         logger.info("Avslutar PIR-sensorövervakning...")
     finally:
