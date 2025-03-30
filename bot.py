@@ -69,7 +69,7 @@ async def send_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_photo(photo)
         logging.info(f"Bild skickad: {photo_path}")
     except FileNotFoundError:
-        await update.message.reply_text("Hoppsan! Jag hittade inte bilden. 😢")
+        await update.message.reply_text("2. Hoppsan! Jag hittade inte bilden. 😢")
         logging.error(f"Bilden saknas: {photo_path}")
 
 # /arm
@@ -200,7 +200,7 @@ async def send_group_photo(context, photo_path):
             await context.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
         logging.info(f"Bild skickad till gruppen: {photo_path}")
     except FileNotFoundError:
-        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="Hoppsan! Jag hittade inte bilden. 😢")
+        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="3. Hoppsan! Jag hittade inte bilden. 😢")
         logging.error(f"Bilden saknas: {photo_path}")
 
 async def send_default_photo(app):
@@ -211,7 +211,7 @@ async def send_default_photo(app):
             await app.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
         logging.info(f"Standardbild skickad till gruppen: {photo_path}")
     except FileNotFoundError:
-        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="Hoppsan! Jag hittade inte bilden. 😢")
+        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="4. Hoppsan! Jag hittade inte bilden. 😢")
         logging.error(f"Bilden saknas: {photo_path}")
 
 async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande till gruppen!"):
@@ -228,7 +228,7 @@ async def send_picture_to_group(app, picture_path):
         logging.info(f"Picture sent to group: {picture_path}")
     except FileNotFoundError:
         logging.error(f"Picture not found: {picture_path}")
-        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="Hoppsan! Jag hittade inte bilden. 😢")
+        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="1. Hoppsan! Jag hittade inte bilden. 😢")
 
 async def handle_latest_picture(app, payload):
     """
