@@ -163,7 +163,7 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 4) Publicera förfrågan (N)
     request_payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": n})
-    publish_payload(mqtt_client, Topics.GET_LATEST_PICTURES_N.value, request_payload)  # Use standardized payload
+    publish_payload(mqtt_client, Topics.GET_LATEST_PICTURES.value, request_payload)  # Use corrected attribute
 
     try:
         # 5) Vänta asynkront på att future fylls med payload
