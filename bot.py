@@ -108,11 +108,11 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         payload = create_payload(source="bot", event="TAKE_PICTURE")
         publish_payload(Topics.TAKE_PICTURE.value, payload)  # Use the updated function
-        await update.message.reply_text("📸 Tar en bild... Vänta ett ögonblick.")
+        await update.message.reply_text("📸 Tar en bild... Vänta ett ögonblick.")  # Correct response
         logging.info("Take picture command sent via /takepicture.")
     except Exception as e:
         logging.error(f"Failed to send take picture command: {e}")
-        await update.message.reply_text("❌ Misslyckades att ta en bild.")
+        await update.message.reply_text("❌ Misslyckades att ta en bild.")  # Error response
 
 # ----------------------- HANTERA /latestphoto -----------------------
 

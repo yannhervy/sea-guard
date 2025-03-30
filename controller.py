@@ -3,9 +3,9 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import logging
-import paho.mqtt.client as mqtt
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
+from mqtt_client import get_mqtt_client  # Import the singleton MQTT client
 
 # ----------- KONFIGURATION -----------
 MQTT_BROKER = "localhost"
@@ -28,33 +28,43 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ----------- MQTT CLIENT -----------
-client = mqtt.Client(protocol=mqtt.MQTTv5)
-
-def setup_mqtt():
-    try:
-        client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        logger.info(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
-    except Exception as e:
-        logger.error(f"Failed to connect to MQTT broker: {e}")
-        exit(1)
+client = get_mqtt_client()
+if client is None:
+    logger.error("Failed to initialize MQTT client. Exiting...")
+    sys.exit(1)
 
 # ----------- CALLBACKS -----------
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         logger.info("Successfully connected to MQTT broker.")
-        # Subscribe to all topics
-        topics = [(topic.value, 0) for topic in Topics]
-        client.subscribe(topics)
-        logger.info(f"Subscribed to topics: {', '.join([t[0] for t in topics])}")
+        # Subscribe to PIR motion topics
+        client.subscribe([
+            (Topics.PIR_MOTION_DETECTED.value, 0),
+            (Topics.PIR_MOTION_ENDED.value, 0)
+        ])
+        logger.info(f"Subscribed to topics: {Topics.PIR_MOTION_DETECTED.value}, {Topics.PIR_MOTION_ENDED.value}")
     else:
         logger.error(f"Failed to connect to MQTT broker, return code {rc}")
 
 def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
+    if msg.topic == Topics.PIR_MOTION_DETECTED.value:
+        logger.info("Motion detected! Triggering picture capture...")
+        trigger_picture_capture()
+
+def trigger_picture_capture():
+    """
+    Publishes a message to the TAKE_PICTURE topic to trigger the camera.
+    """
+    try:
+        payload = create_payload(source="controller", event="TAKE_PICTURE")
+        publish_payload(Topics.TAKE_PICTURE.value, payload)
+        logger.info(f"Published TAKE_PICTURE event to topic '{Topics.TAKE_PICTURE.value}'")
+    except Exception as e:
+        logger.error(f"Failed to trigger picture capture: {e}")
 
 # ----------- MAIN LOOP -----------
 def main():
-    setup_mqtt()
     client.on_connect = on_connect
     client.on_message = on_message
 
