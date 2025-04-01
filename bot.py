@@ -164,6 +164,18 @@ def on_connect(client, userdata, flags, rc):
     else:
         logging.error(f"MQTT: Failed to connect to broker, return code {rc}")
 
+def on_disconnect(client, userdata, rc):
+    if rc != 0:
+        logging.warning("MQTT: Unexpected disconnection. Attempting to reconnect...")
+        while True:
+            try:
+                client.reconnect()
+                logging.info("MQTT: Reconnected to broker.")
+                break
+            except Exception as e:
+                logging.error(f"MQTT: Reconnection failed: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+
 def on_message(client, userdata, msg):
     payload = msg.payload.decode()
     logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
@@ -218,6 +230,27 @@ async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande 
     except Exception as e:
         logging.error(f"Failed to send push message to group: {e}")
 
+# ----------------------- MQTT CLIENT SETUP -----------------------
+
+def setup_mqtt_client():
+    """
+    Sets up the MQTT client with the necessary callbacks and starts the loop.
+    """
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
+    client.on_message = on_message
+
+    try:
+        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        logging.info(f"MQTT: Connected to broker at {MQTT_BROKER}:{MQTT_PORT}")
+    except Exception as e:
+        logging.error(f"MQTT: Failed to connect to broker: {e}")
+        sys.exit(1)
+
+    client.loop_start()
+    return client
+
 async def main():
     global MAIN_LOOP
     app = ApplicationBuilder().token(TOKEN).build()
@@ -235,11 +268,7 @@ async def main():
     app.add_handler(CommandHandler("takepicture", take_picture_command))  # Add /takepicture command
 
     # MQTT client setup
-    client = mqtt.Client()
-    client.on_connect = on_connect
-    client.on_message = on_message
-    client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    client.loop_start()
+    setup_mqtt_client()
 
     async with app:
         # Skicka ett meddelande till gruppen när boten startar
