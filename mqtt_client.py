@@ -22,4 +22,13 @@ def get_mqtt_client():
         except Exception as e:
             logger.error(f"Failed to connect to MQTT broker: {e}")
             _client = None
+    else:
+        if not _client.is_connected():
+            try:
+                logger.info("MQTT client is not connected. Attempting to reconnect...")
+                _client.reconnect()
+                logger.info("Reconnected to MQTT broker.")
+            except Exception as e:
+                logger.error(f"Failed to reconnect to MQTT broker: {e}")
+                _client = None
     return _client
