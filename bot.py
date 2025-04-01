@@ -111,7 +111,7 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
     """
     try:
         payload = create_payload(source="bot", event="TAKE_PICTURE")
-        publish_payload(Topics.TAKE_PICTURE.value, payload)  # Use the updated function
+        await publish_payload_async(Topics.TAKE_PICTURE.value, payload)  # Use the async version of publish_payload
         await update.message.reply_text("📸 Tar en bild... Vänta ett ögonblick.")  # Correct response
         logging.info("Take picture command sent via /takepicture.")
     except Exception as e:
@@ -152,6 +152,31 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Misslyckades att hämta senaste bilderna.")
     finally:
         process_latest_photo = False
+
+# ----------------------- ASYNC MQTT PUBLISH -----------------------
+
+async def publish_payload_async(topic: str, payload: MQTTPayload):
+    """
+    Publishes an MQTT payload asynchronously to avoid blocking the bot's event loop.
+    """
+    loop = asyncio.get_running_loop()
+    client = get_mqtt_client()
+
+    if client is None:
+        logging.error("MQTT client is not available. Unable to publish payload.")
+        return
+
+    try:
+        if not client.is_connected():
+            logging.info("MQTT client is not connected. Attempting to reconnect...")
+            await loop.run_in_executor(None, client.reconnect)
+            logging.info("Reconnected to MQTT broker.")
+
+        logging.info(f"Publishing payload to topic '{topic}': {payload.json()}")
+        await loop.run_in_executor(None, client.publish, topic, payload.json())
+        logging.info(f"Payload published to topic '{topic}'.")
+    except Exception as e:
+        logging.error(f"Failed to publish payload to topic '{topic}': {e}")
 
 # ----------------------- MQTT CALLBACKS -----------------------
 
