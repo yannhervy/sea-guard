@@ -242,7 +242,7 @@ def setup_mqtt_client():
     client.on_message = on_message
 
     try:
-        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        client.connect(MQTT_BROKER, MQTT_PORT, 30)
         logging.info(f"MQTT: Connected to broker at {MQTT_BROKER}:{MQTT_PORT}")
     except Exception as e:
         logging.error(f"MQTT: Failed to connect to broker: {e}")
