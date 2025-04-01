@@ -158,40 +158,55 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logging.info(f"MQTT: Connected to broker ({MQTT_BROKER}:{MQTT_PORT})")
-        # Subscribe to all relevant topics
-        client.subscribe([
-            (Topics.PIR_MOTION_DETECTED.value, 0),
-            (Topics.SEND_LATEST_PICTURES.value, 0)
-        ])
-        logging.info("Subscribed to all relevant topics.")
+        # Always subscribe to SEND_LATEST_PICTURES topic
+        client.subscribe(Topics.SEND_LATEST_PICTURES.value)
+        logging.info(f"Subscribed to topic: {Topics.SEND_LATEST_PICTURES.value}")
     else:
         logging.error(f"MQTT: Failed to connect to broker, return code {rc}")
 
 def on_message(client, userdata, msg):
-    global process_latest_photo, latest_photo_future
     payload = msg.payload.decode()
     logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
 
-    if msg.topic == Topics.SEND_LATEST_PICTURES.value and process_latest_photo:
-        if latest_photo_future and not latest_photo_future.done():
-            latest_photo_future.set_result(payload)
+    if msg.topic == Topics.SEND_LATEST_PICTURES.value:
+        handle_send_latest_pictures(payload)
+
+# ----------------------- HANDLERS -----------------------
+
+def handle_send_latest_pictures(payload):
+    """
+    Handles the SEND_LATEST_PICTURES topic by sending the latest picture to the Telegram group.
+    """
+    try:
+        data = json.loads(payload)
+        picture_paths = data.get("data", {}).get("pictures", [])
+        if picture_paths:
+            logging.info(f"Received {len(picture_paths)} pictures. Sending to group...")
+            for path in picture_paths:
+                asyncio.run_coroutine_threadsafe(send_group_photo(MAIN_LOOP, path), MAIN_LOOP)
+        else:
+            logging.warning("No pictures found in the payload.")
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to parse payload as JSON: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error while handling SEND_LATEST_PICTURES: {e}")
 
 # ----------------------- MAIN: starta bot & tasks -----------------------
 
-async def send_group_photo(context, photo_path):
+async def send_group_photo(loop, photo_path):
     """
     Sends a photo to the Telegram group.
     """
     try:
         with open(photo_path, 'rb') as photo:
-            await context.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
+            await loop.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
         logging.info(f"Photo sent to group: {photo_path}")
     except FileNotFoundError:
         logging.error(f"Photo not found: {photo_path}")
-        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Hoppsan! Jag hittade inte bilden. 😢")
+        await loop.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Hoppsan! Jag hittade inte bilden. 😢")
     except Exception as e:
         logging.error(f"Failed to send photo to group: {e}")
-        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Misslyckades att skicka bilden.")
+        await loop.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Misslyckades att skicka bilden.")
 
 async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande till gruppen!"):
     """
