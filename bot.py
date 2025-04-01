@@ -143,7 +143,7 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         picture_paths = json.loads(response).get("data", {}).get("pictures", [])
         if picture_paths:
             for path in picture_paths:
-                await send_group_photo(context, path)
+                await send_group_photo(context.bot, path)
                 time.sleep(1)  # Add a 1-second delay between sending pictures
         else:
             await update.message.reply_text("Ingen bild funnen.")
@@ -195,7 +195,7 @@ def handle_send_latest_pictures(payload):
         if picture_paths:
             logging.info(f"Received {len(picture_paths)} pictures. Sending to group...")
             for path in picture_paths:
-                asyncio.run_coroutine_threadsafe(send_group_photo(MAIN_LOOP, path), MAIN_LOOP)
+                asyncio.run_coroutine_threadsafe(send_group_photo(app, path), MAIN_LOOP)
         else:
             logging.warning("No pictures found in the payload.")
     except json.JSONDecodeError as e:
@@ -205,20 +205,20 @@ def handle_send_latest_pictures(payload):
 
 # ----------------------- MAIN: starta bot & tasks -----------------------
 
-async def send_group_photo(loop, photo_path):
+async def send_group_photo(app, photo_path):
     """
     Sends a photo to the Telegram group.
     """
     try:
         with open(photo_path, 'rb') as photo:
-            await loop.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
+            await app.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo)
         logging.info(f"Photo sent to group: {photo_path}")
     except FileNotFoundError:
         logging.error(f"Photo not found: {photo_path}")
-        await loop.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Hoppsan! Jag hittade inte bilden. 😢")
+        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Hoppsan! Jag hittade inte bilden. 😢")
     except Exception as e:
         logging.error(f"Failed to send photo to group: {e}")
-        await loop.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Misslyckades att skicka bilden.")
+        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text="❌ Misslyckades att skicka bilden.")
 
 async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande till gruppen!"):
     """
@@ -252,7 +252,7 @@ def setup_mqtt_client():
     return client
 
 async def main():
-    global MAIN_LOOP
+    global MAIN_LOOP, app
     app = ApplicationBuilder().token(TOKEN).build()
 
     # Sätt vår globala MAIN_LOOP till den event-loop som kör just nu
