@@ -83,7 +83,7 @@ def monitor_pir_sensor():
         while True:
             if monitoring:
                 current_state = GPIO.input(PIR_PIN)  # Read the current state of the PIR sensor
-                # logger.info(f"Current state: {current_state}, Last state: {last_state}")
+                logger.info(f"Current state: {current_state}, Last state: {last_state}")
                 if current_state and not last_state:  # Motion detected (state changed from OFF to ON)
                     logger.info("Motion detected!")
                     payload = create_payload(source="pir-sensor", event="MOTION_DETECTED")
