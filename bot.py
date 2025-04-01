@@ -275,7 +275,10 @@ async def main():
         await send_group_push_message(app, text="🚀 Botten har startat!")
 
         print("🚀 Botten är igång! Tryck Ctrl+C för att stoppa.")
-        await app.run_polling(poll_interval=5, timeout=30)
+        while True:
+            logging.info("Main loop is running...")
+            await asyncio.sleep(5)  # Sleep for 5 seconds
+            await app.run_polling(poll_interval=5, timeout=30)
 
 if __name__ == '__main__':
     nest_asyncio.apply()  # Möjliggör nested asyncio-loops om det behövs
