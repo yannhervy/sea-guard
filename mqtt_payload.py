@@ -23,11 +23,16 @@ def create_payload(source: str, event: str, data: Optional[Dict[str, Any]] = Non
         data=data or {}
     )
 def publish_payload_with_client(client, topic: str, payload: MQTTPayload):
+    logger.debug(f"BEGIN publish_payload_with_client: '{topic}': {payload.json()}")
     if client is None:
         logger.error(f"MQTT client is not available. Unable to publish to topic '{topic}'.")
         return
 
     try:
+        if not client.is_connected():
+            logger.info("MQTT client is not connected. Attempting to reconnect...")
+            client.reconnect()
+            logger.info("Reconnected to MQTT broker.")
         client.publish(topic, payload.json())
         logger.info(f"Published payload to topic '{topic}': {payload.json()}")
     except Exception as e:
@@ -35,10 +40,9 @@ def publish_payload_with_client(client, topic: str, payload: MQTTPayload):
 
 
 def publish_payload(topic: str, payload: MQTTPayload):
-    """
-    Publishes a payload to a given MQTT topic.
-    Uses the singleton MQTT client.
-    """
+    logger.setLevel(logging.DEBUG)  # Set the log level to DEBUG for more visibility
+    logger.debug(f"BEGIN publish_payload: '{topic}': {payload.json()}")
     client = get_mqtt_client()
     publish_payload_with_client(client, topic, payload)
+    logger.debug(f"END publish_payload: '{topic}': {payload.json()}")
     
