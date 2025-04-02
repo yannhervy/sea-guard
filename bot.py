@@ -65,8 +65,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start - Startar en konversation med boten 🤖\n"
         "/help - Visar denna hjälptext 📝\n"
         "/photo - Skickar en bild på sjöboden 🏝️\n"
-        "/latestphoto - Skickar den senaste bilden 📸\n"
-        "/latestphoto - Skickar de 3 senaste bilderna 📸📸📸\n"
         "/arm - Aktiverar PIR-sensorn 🔒\n"
         "/disarm - Avaktiverar PIR-sensorn 🔓\n"
         "/takepicture - Tar en ny bild 📸\n"
@@ -126,32 +124,6 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
     except Exception as e:
         logging.error(f"Failed to send take picture command: {e}")
         await update.message.reply_text("❌ Misslyckades att ta en bild.")  # Error response
-
-# /latestphoto
-async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Requests the latest pictures from MQTT based on the count provided in the command.
-    """
-    try:
-        # Extract the count argument from the command (default to 1 if not provided)
-        count = 1
-        if context.args:
-            try:
-                count = int(context.args[0])
-                if count < 1:
-                    raise ValueError("Count must be at least 1.")
-            except ValueError:
-                await update.message.reply_text("❌ Ogiltigt antal. Ange ett positivt heltal.")
-                return
-
-        # Create the payload with the specified count
-        payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": count})
-        publish_payload(Topics.GET_LATEST_PICTURES.value, payload)
-        logging.info(f"Published GET_LATEST_PICTURES request for {count} pictures.")
-        await update.message.reply_text(f"📸 Begäran om {count} senaste bilder har skickats.")
-    except Exception as e:
-        logging.error(f"Failed to publish GET_LATEST_PICTURES request: {e}")
-        await update.message.reply_text("❌ Misslyckades att begära senaste bilderna.")
 
 # /status
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -247,28 +219,6 @@ def on_message(client, userdata, msg):
     payload = msg.payload.decode()
     logging.info(f"MQTT: Message received on {msg.topic}: {payload}")
 
-    if msg.topic == Topics.SEND_LATEST_PICTURES.value:
-        handle_send_latest_pictures(payload)
-
-# ----------------------- HANDLERS -----------------------
-
-def handle_send_latest_pictures(payload):
-    """
-    Handles the SEND_LATEST_PICTURES topic by sending the latest picture to the Telegram group.
-    """
-    try:
-        data = json.loads(payload)
-        picture_path = data.get("data", {}).get("path")
-        if picture_path:
-            logging.info(f"Received picture path: {picture_path}. Sending to group...")
-            asyncio.run_coroutine_threadsafe(send_group_photo(app, picture_path), MAIN_LOOP)
-        else:
-            logging.warning("No picture path found in the payload.")
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to parse payload as JSON: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error while handling SEND_LATEST_PICTURES: {e}")
-
 # ----------------------- MAIN: starta bot & tasks -----------------------
 
 async def send_group_photo(app, photo_path):
@@ -334,7 +284,6 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("photo", send_photo))
-    app.add_handler(CommandHandler("latestphoto", latest_photo))  # Updated to handle arguments
     app.add_handler(CommandHandler("arm", arm_pir_sensor))
     app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
     app.add_handler(CommandHandler("takepicture", take_picture_command))
