@@ -334,7 +334,7 @@ async def main():
     await send_group_push_message(app, text="🚀 Botten har startat!")
 
     logging.info("🚀 Botten är igång! Kör polling...")
-    await app.run_polling()
+    app.run_polling()
 
 
 if __name__ == '__main__':
