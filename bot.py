@@ -121,37 +121,16 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
 # /latestphoto
 async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Requests the latest pictures from MQTT and sends them to the group.
+    Requests the latest picture from MQTT without waiting for a response.
     """
-    global process_latest_photo, latest_photo_future
-    process_latest_photo = True
-    latest_photo_future = asyncio.get_running_loop().create_future()
-
-    # Publish the request for the latest pictures
     try:
         payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": 1})
         publish_payload(Topics.GET_LATEST_PICTURES.value, payload)
         logging.info("Published GET_LATEST_PICTURES request.")
+        await update.message.reply_text("📸 Begäran om senaste bilden har skickats.")
     except Exception as e:
         logging.error(f"Failed to publish GET_LATEST_PICTURES request: {e}")
-        await update.message.reply_text("❌ Misslyckades att begära senaste bilderna.")
-        return
-
-    # Wait for the response
-    try:
-        response = await latest_photo_future
-        picture_paths = json.loads(response).get("data", {}).get("pictures", [])
-        if picture_paths:
-            for path in picture_paths:
-                await send_group_photo(context.bot, path)
-                time.sleep(1)  # Add a 1-second delay between sending pictures
-        else:
-            await update.message.reply_text("Ingen bild funnen.")
-    except Exception as e:
-        logging.error(f"Failed to process latest photo response: {e}")
-        await update.message.reply_text("❌ Misslyckades att hämta senaste bilderna.")
-    finally:
-        process_latest_photo = False
+        await update.message.reply_text("❌ Misslyckades att begära senaste bilden.")
 
 # ----------------------- ASYNC MQTT PUBLISH -----------------------
 
@@ -160,7 +139,7 @@ async def publish_payload_async(topic: str, payload: MQTTPayload):
     Publishes an MQTT payload asynchronously to avoid blocking the bot's event loop.
     """
     loop = asyncio.get_running_loop()
-    client = get_mqtt_client()
+    client = get_mqtt_client()  # Ensure the function is defined below
 
     if client is None:
         logging.error("MQTT client is not available. Unable to publish payload.")
@@ -200,6 +179,8 @@ def on_disconnect(client, userdata, rc):
             except Exception as e:
                 logging.error(f"MQTT: Reconnection failed: {e}. Retrying in 5 seconds...")
                 time.sleep(5)
+    else:
+        logging.info("MQTT: Disconnected from broker gracefully.")
 
 def on_message(client, userdata, msg):
     payload = msg.payload.decode()
@@ -256,6 +237,15 @@ async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande 
         logging.error(f"Failed to send push message to group: {e}")
 
 # ----------------------- MQTT CLIENT SETUP -----------------------
+
+def get_mqtt_client():
+    """
+    Returns the MQTT client instance. If the client is not already set up, it initializes it.
+    """
+    global mqtt_client
+    if 'mqtt_client' not in globals():
+        mqtt_client = setup_mqtt_client()
+    return mqtt_client
 
 def setup_mqtt_client():
     """
