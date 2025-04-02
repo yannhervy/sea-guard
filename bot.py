@@ -45,6 +45,9 @@ latest_photo_future = None
 # Track the start time of the script
 START_TIME = datetime.now()
 
+mqtt_client = None
+
+
 # ----------------------- KOMMANDON -----------------------
 
 # /start
@@ -276,12 +279,10 @@ async def send_group_push_message(app, text="🚀 Detta är ett push-meddelande 
 
 # ----------------------- MQTT CLIENT SETUP -----------------------
 
+
 def get_mqtt_client():
-    """
-    Returns the MQTT client instance. If the client is not already set up, it initializes it.
-    """
     global mqtt_client
-    if 'mqtt_client' not in globals():
+    if mqtt_client is None:
         mqtt_client = setup_mqtt_client()
     return mqtt_client
 
@@ -320,9 +321,6 @@ async def main():
     app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
     app.add_handler(CommandHandler("takepicture", take_picture_command))  # Add /takepicture command
     app.add_handler(CommandHandler("status", status))  # Add /status command
-
-    # MQTT client setup
-    setup_mqtt_client()
 
     async with app:
         # Skicka ett meddelande till gruppen när boten startar
