@@ -69,6 +69,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/disarm - Avaktiverar PIR-sensorn 🔓\n"
         "/takepicture - Tar en ny bild 📸\n"
         "/status - Visar systemstatus 📊\n"
+        "/latestphoto [antal] - Begär senaste bilderna 📸\n"
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
 
@@ -163,6 +164,34 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Failed to execute /status command: {e}")
         await update.message.reply_text("❌ Misslyckades att hämta status.")
+
+# /latestphoto
+async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Requests the latest pictures from MQTT based on the count provided in the command.
+    Does not wait for a response – handled by bot_publisher.
+    """
+    try:
+        # Extract the count argument from the command (default to 1 if not provided)
+        count = 1
+        if context.args:
+            try:
+                count = int(context.args[0])
+                if count < 1:
+                    raise ValueError("Count must be at least 1.")
+            except ValueError:
+                await update.message.reply_text("❌ Ogiltigt antal. Ange ett positivt heltal.")
+                return
+
+        # Create and publish the payload
+        payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": count})
+        publish_payload(Topics.GET_LATEST_PICTURES.value, payload)
+
+        logging.info(f"Published GET_LATEST_PICTURES request (count={count}) to '{Topics.GET_LATEST_PICTURES.value}'")
+        await update.message.reply_text(f"📸 Begär {count} senaste bilder. Vänta på respons i bot_publisher.")
+    except Exception as e:
+        logging.error(f"Failed to publish GET_LATEST_PICTURES request: {e}")
+        await update.message.reply_text("❌ Misslyckades att begära senaste bilderna.")
 
 # ----------------------- ASYNC MQTT PUBLISH -----------------------
 
@@ -288,6 +317,7 @@ async def main():
     app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
     app.add_handler(CommandHandler("takepicture", take_picture_command))
     app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("latestphoto", latest_photo))
 
     # Setup MQTT en gång
     get_mqtt_client()

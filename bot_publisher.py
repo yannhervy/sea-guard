@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logging.info("bot_publisher: Connected to MQTT broker.")
+        # Subscribe to the “latest picture” topic
         client.subscribe(Topics.GET_LATEST_PICTURES.value)
         logging.info(f"bot_publisher: Subscribed to {Topics.GET_LATEST_PICTURES.value}")
     else:
@@ -26,8 +27,6 @@ def on_message(client, userdata, msg):
     """
     logging.info(f"bot_publisher: Received message on '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.GET_LATEST_PICTURES.value:
-        # Parse the incoming payload and determine how many images are requested
-        # Then publish them or send them somewhere, e.g.:
         try:
             # Example: Just log or re-publish a dummy response
             payload = create_payload(
