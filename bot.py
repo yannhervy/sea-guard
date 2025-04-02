@@ -238,13 +238,12 @@ def handle_send_latest_pictures(payload):
     """
     try:
         data = json.loads(payload)
-        picture_paths = data.get("data", {}).get("pictures", [])
-        if picture_paths:
-            logging.info(f"Received {len(picture_paths)} pictures. Sending to group...")
-            for path in picture_paths:
-                asyncio.run_coroutine_threadsafe(send_group_photo(app, path), MAIN_LOOP)
+        picture_path = data.get("data", {}).get("path")
+        if picture_path:
+            logging.info(f"Received picture path: {picture_path}. Sending to group...")
+            asyncio.run_coroutine_threadsafe(send_group_photo(app, picture_path), MAIN_LOOP)
         else:
-            logging.warning("No pictures found in the payload.")
+            logging.warning("No picture path found in the payload.")
     except json.JSONDecodeError as e:
         logging.error(f"Failed to parse payload as JSON: {e}")
     except Exception as e:
