@@ -6,6 +6,8 @@ import asyncio
 import signal
 import json
 import time  # Import time module for sleep
+import psutil  # Import psutil to get process information
+from datetime import timedelta
 
 from dotenv import load_dotenv
 from telegram import Update
@@ -40,6 +42,9 @@ MAIN_LOOP = None
 process_latest_photo = False
 latest_photo_future = None
 
+# Track the start time of the script
+START_TIME = datetime.now()
+
 # ----------------------- KOMMANDON -----------------------
 
 # /start
@@ -62,6 +67,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/arm - Aktiverar PIR-sensorn 🔒\n"
         "/disarm - Avaktiverar PIR-sensorn 🔓\n"
         "/takepicture - Tar en ny bild 📸\n"
+        "/status - Visar systemstatus 📊\n"
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
 
@@ -131,6 +137,38 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Failed to publish GET_LATEST_PICTURES request: {e}")
         await update.message.reply_text("❌ Misslyckades att begära senaste bilden.")
+
+# /status
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Sends the script's process ID, the state of the MQTT client, and how long it has been running.
+    """
+    try:
+        # Get process ID
+        process_id = os.getpid()
+
+        # Get MQTT client state
+        mqtt_client = get_mqtt_client()
+        mqtt_state = "Connected" if mqtt_client and mqtt_client.is_connected() else "Disconnected"
+
+        # Calculate uptime
+        uptime = datetime.now() - START_TIME
+        uptime_str = str(timedelta(seconds=int(uptime.total_seconds())))
+
+        # Prepare status message
+        status_message = (
+            f"📊 *System Status:*\n\n"
+            f"🔹 *Process ID:* {process_id}\n"
+            f"🔹 *MQTT Client State:* {mqtt_state}\n"
+            f"🔹 *Uptime:* {uptime_str}\n"
+        )
+
+        # Send status message
+        await update.message.reply_text(status_message, parse_mode="Markdown")
+        logging.info("Status command executed successfully.")
+    except Exception as e:
+        logging.error(f"Failed to execute /status command: {e}")
+        await update.message.reply_text("❌ Misslyckades att hämta status.")
 
 # ----------------------- ASYNC MQTT PUBLISH -----------------------
 
@@ -281,6 +319,7 @@ async def main():
     app.add_handler(CommandHandler("arm", arm_pir_sensor))
     app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
     app.add_handler(CommandHandler("takepicture", take_picture_command))  # Add /takepicture command
+    app.add_handler(CommandHandler("status", status))  # Add /status command
 
     # MQTT client setup
     setup_mqtt_client()
