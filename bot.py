@@ -315,7 +315,6 @@ async def main():
     global MAIN_LOOP, app
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Sätt vår globala MAIN_LOOP till den event-loop som kör just nu
     MAIN_LOOP = asyncio.get_running_loop()
 
     # Registrera kommandon
@@ -325,18 +324,18 @@ async def main():
     app.add_handler(CommandHandler("latestphoto", latest_photo))
     app.add_handler(CommandHandler("arm", arm_pir_sensor))
     app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
-    app.add_handler(CommandHandler("takepicture", take_picture_command))  # Add /takepicture command
-    app.add_handler(CommandHandler("status", status))  # Add /status command
+    app.add_handler(CommandHandler("takepicture", take_picture_command))
+    app.add_handler(CommandHandler("status", status))
 
-    async with app:
-        # Skicka ett meddelande till gruppen när boten startar
-        await send_group_push_message(app, text="🚀 Botten har startat!")
+    # Setup MQTT en gång
+    get_mqtt_client()
 
-        print("🚀 Botten är igång! Tryck Ctrl+C för att stoppa.")
-        while True:
-            logging.info("Main loop is running...")
-            await asyncio.sleep(5)  # Sleep for 5 seconds
-            await app.run_polling(poll_interval=5, timeout=30)
+    # Skicka push-meddelande när botten startar
+    await send_group_push_message(app, text="🚀 Botten har startat!")
+
+    logging.info("🚀 Botten är igång! Kör polling...")
+    await app.run_polling()
+
 
 if __name__ == '__main__':
     nest_asyncio.apply()  # Möjliggör nested asyncio-loops om det behövs
