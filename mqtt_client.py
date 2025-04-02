@@ -18,18 +18,10 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logger.info("MQTT: Connected to broker successfully.")
         # Re-subscribe to topics
-        topics = [
-            Topics.SEND_LATEST_PICTURES.value,
-            Topics.PIR_MOTION_DETECTED.value,
-            Topics.PIR_MOTION_ENDED.value,
-            Topics.PIR_ARM.value,
-            Topics.PIR_DISARM.value,
-            Topics.TAKE_PICTURE.value
-        ]
-        for topic in topics:
+        subscriptions = userdata.get("subscriptions", [])
+        for topic in subscriptions:
             client.subscribe(topic)
             logger.info(f"MQTT: Subscribed to topic: {topic}")
-        client._subscriptions = topics  # Store subscribed topics for later reference
     else:
         logger.error(f"MQTT: Failed to connect to broker, return code {rc}")
 
@@ -56,18 +48,18 @@ def on_message(client, userdata, msg):
     """
     logger.info(f"MQTT: Message received on topic '{msg.topic}': {msg.payload.decode()}")
 
-def get_mqtt_client():
+def get_mqtt_client(subscriptions=None):
     """
     Returns a singleton MQTT client instance.
     Ensures the client is connected to the broker and sets up callbacks.
+    Resubscribes to the provided list of topics after reconnecting.
     """
     global _client
     if _client is None:
-        _client = mqtt.Client()
+        _client = mqtt.Client(userdata={"subscriptions": subscriptions or []})
         _client.on_connect = on_connect
         _client.on_disconnect = on_disconnect
         _client.on_message = on_message
-        _client._subscriptions = []  # Initialize an attribute to track subscriptions
         try:
             _client.connect(MQTT_BROKER, MQTT_PORT, 60)
             logger.info(f"MQTT: Connected to broker at {MQTT_BROKER}:{MQTT_PORT}")
@@ -80,6 +72,10 @@ def get_mqtt_client():
                 logger.info("MQTT: Client is not connected. Attempting to reconnect...")
                 _client.reconnect()
                 logger.info("MQTT: Reconnected to broker.")
+                # Resubscribe to topics after reconnecting
+                for topic in _client._userdata.get("subscriptions", []):
+                    _client.subscribe(topic)
+                    logger.info(f"MQTT: Resubscribed to topic: {topic}")
             except Exception as e:
                 logger.error(f"MQTT: Failed to reconnect to broker: {e}")
                 _client = None

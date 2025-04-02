@@ -168,8 +168,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Fetch subscribed topics dynamically
         subscribed_topics = []
-        if client and hasattr(client, "_subscriptions"):
-            subscribed_topics = [topic.decode() for topic in client._subscriptions.keys()]
+        if client and hasattr(client, "_userdata"):
+            subscribed_topics = client._userdata.get("subscriptions", [])
 
         # Calculate uptime
         uptime = datetime.now() - START_TIME
@@ -234,6 +234,7 @@ def on_disconnect(client, userdata, rc):
         while True:
             try:
                 client.reconnect()
+                client.subscribe(Topics.SEND_LATEST_PICTURES.value)
                 logging.info("MQTT: Reconnected to broker.")
                 break
             except Exception as e:
