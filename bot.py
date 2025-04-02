@@ -18,7 +18,7 @@ import paho.mqtt.client as mqtt
 import nest_asyncio
 from datetime import datetime
 from mqtt_topics import Topics  # Import Topics enum
-from mqtt_payload import create_payload, publish_payload  # Import helper functions
+from mqtt_payload import create_payload, publish_payload, MQTTPayload  # Import MQTTPayload class
 
 # ----------------------- KONFIGURATION -----------------------
 logging.basicConfig(level=logging.INFO)
