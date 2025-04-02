@@ -18,9 +18,17 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logger.info("MQTT: Connected to broker successfully.")
         # Re-subscribe to topics
-        client.subscribe(Topics.SEND_LATEST_PICTURES.value)
-        client.subscribe(Topics.PIR_MOTION_DETECTED.value)
-        logger.info("MQTT: Re-subscribed to necessary topics.")
+        topics = [
+            Topics.SEND_LATEST_PICTURES.value,
+            Topics.PIR_MOTION_DETECTED.value,
+            Topics.PIR_MOTION_ENDED.value,
+            Topics.PIR_ARM.value,
+            Topics.PIR_DISARM.value,
+            Topics.TAKE_PICTURE.value
+        ]
+        for topic in topics:
+            client.subscribe(topic)
+            logger.info(f"MQTT: Subscribed to topic: {topic}")
     else:
         logger.error(f"MQTT: Failed to connect to broker, return code {rc}")
 
@@ -40,6 +48,13 @@ def on_disconnect(client, userdata, rc):
                 logger.error(f"MQTT: Reconnection failed: {e}. Retrying in 5 seconds...")
                 time.sleep(5)
 
+def on_message(client, userdata, msg):
+    """
+    Callback for when a message is received on a subscribed topic.
+    Logs the topic and the message payload.
+    """
+    logger.info(f"MQTT: Message received on topic '{msg.topic}': {msg.payload.decode()}")
+
 def get_mqtt_client():
     """
     Returns a singleton MQTT client instance.
@@ -50,6 +65,7 @@ def get_mqtt_client():
         _client = mqtt.Client()
         _client.on_connect = on_connect
         _client.on_disconnect = on_disconnect
+        _client.on_message = on_message
         try:
             _client.connect(MQTT_BROKER, MQTT_PORT, 60)
             logger.info(f"MQTT: Connected to broker at {MQTT_BROKER}:{MQTT_PORT}")

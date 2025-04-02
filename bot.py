@@ -144,15 +144,20 @@ async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # /status
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Sends the script's process ID, the state of the MQTT client, and how long it has been running.
+    Sends the script's process ID, the state of the MQTT client, how long it has been running, and subscribed topics.
     """
     try:
         # Get process ID
         process_id = os.getpid()
 
-        # Get MQTT client state
-        mqtt_client = get_mqtt_client()
-        mqtt_state = "Connected" if mqtt_client and mqtt_client.is_connected() else "Disconnected"
+        # Dynamically check MQTT client state
+        client = get_mqtt_client()
+        mqtt_state = "Connected" if client and client.is_connected() else "Disconnected"
+
+        # Fetch subscribed topics dynamically
+        subscribed_topics = []
+        if client and hasattr(client, "_subscriptions"):
+            subscribed_topics = [topic.decode() for topic in client._subscriptions.keys()]
 
         # Calculate uptime
         uptime = datetime.now() - START_TIME
@@ -164,6 +169,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔹 *Process ID:* {process_id}\n"
             f"🔹 *MQTT Client State:* {mqtt_state}\n"
             f"🔹 *Uptime:* {uptime_str}\n"
+            f"🔹 *Subscribed Topics:*\n" +
+            "\n".join([f"  - {topic}" for topic in subscribed_topics])
         )
 
         # Send status message
