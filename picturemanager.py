@@ -92,6 +92,7 @@ def delete_old_pictures():
 
 def get_latest_pictures(n):
     """Hämtar sökvägarna till de N senaste bilderna."""
+    logger.info(f"Hämtar de senaste {n} bilderna...")
     if not PICTURE_FOLDER.exists():
         logger.warning(f"Katalogen '{PICTURE_FOLDER}' finns inte!")
         return []

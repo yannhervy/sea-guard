@@ -130,16 +130,28 @@ async def take_picture_command(update: Update, context: ContextTypes.DEFAULT_TYP
 # /latestphoto
 async def latest_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Requests the latest picture from MQTT without waiting for a response.
+    Requests the latest pictures from MQTT based on the count provided in the command.
     """
     try:
-        payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": 1})
+        # Extract the count argument from the command (default to 1 if not provided)
+        count = 1
+        if context.args:
+            try:
+                count = int(context.args[0])
+                if count < 1:
+                    raise ValueError("Count must be at least 1.")
+            except ValueError:
+                await update.message.reply_text("❌ Ogiltigt antal. Ange ett positivt heltal.")
+                return
+
+        # Create the payload with the specified count
+        payload = create_payload(source="bot", event="GET_LATEST_PICTURES", data={"count": count})
         publish_payload(Topics.GET_LATEST_PICTURES.value, payload)
-        logging.info("Published GET_LATEST_PICTURES request.")
-        await update.message.reply_text("📸 Begäran om senaste bilden har skickats.")
+        logging.info(f"Published GET_LATEST_PICTURES request for {count} pictures.")
+        await update.message.reply_text(f"📸 Begäran om {count} senaste bilder har skickats.")
     except Exception as e:
         logging.error(f"Failed to publish GET_LATEST_PICTURES request: {e}")
-        await update.message.reply_text("❌ Misslyckades att begära senaste bilden.")
+        await update.message.reply_text("❌ Misslyckades att begära senaste bilderna.")
 
 # /status
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -321,7 +333,7 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("photo", send_photo))
-    app.add_handler(CommandHandler("latestphoto", latest_photo))
+    app.add_handler(CommandHandler("latestphoto", latest_photo))  # Updated to handle arguments
     app.add_handler(CommandHandler("arm", arm_pir_sensor))
     app.add_handler(CommandHandler("disarm", disarm_pir_sensor))
     app.add_handler(CommandHandler("takepicture", take_picture_command))

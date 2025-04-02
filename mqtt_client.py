@@ -29,6 +29,7 @@ def on_connect(client, userdata, flags, rc):
         for topic in topics:
             client.subscribe(topic)
             logger.info(f"MQTT: Subscribed to topic: {topic}")
+        client._subscriptions = topics  # Store subscribed topics for later reference
     else:
         logger.error(f"MQTT: Failed to connect to broker, return code {rc}")
 
@@ -66,6 +67,7 @@ def get_mqtt_client():
         _client.on_connect = on_connect
         _client.on_disconnect = on_disconnect
         _client.on_message = on_message
+        _client._subscriptions = []  # Initialize an attribute to track subscriptions
         try:
             _client.connect(MQTT_BROKER, MQTT_PORT, 60)
             logger.info(f"MQTT: Connected to broker at {MQTT_BROKER}:{MQTT_PORT}")
