@@ -50,6 +50,8 @@ def main():
 
     client.on_connect = on_connect
     client.on_message = on_message
+    client.on_disconnect = lambda client, userdata, rc: logging.info("bot_publisher: Disconnected from MQTT broker.")
+    client.on_log = lambda client, userdata, level, buf: logging.debug(f"MQTT log: {buf}")  # Optional logging
 
     logging.info("bot_publisher: Starting MQTT event loop.")
     client.loop_forever()

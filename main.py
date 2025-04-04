@@ -15,7 +15,7 @@ scripts = [
     "pir_sensor.py",
     "controller.py",
     "camera.py",  # Added camera script
-    "bot_publisher.py",  # Added bot_publisher script
+    "bot_sub_pub.py",  # Added bot_publisher script
     # "intercept-all-mqtt.py"
 ]
 
