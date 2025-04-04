@@ -1,59 +1,64 @@
-import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+import json
 import logging
 import asyncio
+from dotenv import load_dotenv
+from telegram import Bot
 from mqtt_client import get_mqtt_client
 from mqtt_topics import Topics
-from mqtt_payload import create_payload, publish_payload
-from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
+load_dotenv()
+
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+GROUP_CHAT_ID = -4664318067  # Replace with your group ID if needed
+
+bot = Bot(token=TOKEN)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
-        logging.info("bot_publisher: Connected to MQTT broker.")
-        # Subscribe to the “latest picture” topic
-        client.subscribe(Topics.GET_LATEST_PICTURES.value)
-        logging.info(f"bot_publisher: Subscribed to {Topics.GET_LATEST_PICTURES.value}")
+        logging.info("bot_sub_pub: Connected to MQTT broker.")
+        client.subscribe(Topics.SEND_LATEST_PICTURES.value)
+        logging.info(f"bot_sub_pub: Subscribed to {Topics.SEND_LATEST_PICTURES.value}")
     else:
-        logging.error(f"bot_publisher: Connection failed with rc={rc}")
+        logging.error(f"bot_sub_pub: Connection failed with rc={rc}")
 
 def on_message(client, userdata, msg):
     """
-    Handles incoming requests on GET_LATEST_PICTURES_N.
-    For a real setup, fetch the pictures and publish them.
+    Receives picture paths on SEND_LATEST_PICTURES and sends them to the Telegram group.
     """
-    logging.info(f"bot_publisher: Received message on '{msg.topic}': {msg.payload.decode()}")
-    if msg.topic == Topics.GET_LATEST_PICTURES.value:
-        try:
-            # Example: Just log or re-publish a dummy response
-            payload = create_payload(
-                source="bot_publisher",
-                event="SEND_LATEST_PICTURES",
-                data={"info": "Dummy pictures published."}
-            )
-            publish_payload(Topics.SEND_LATEST_PICTURES.value, payload)
-            logging.info("bot_publisher: Published dummy pictures to SEND_LATEST_PICTURES.")
-        except Exception as e:
-            logging.error(f"bot_publisher: Failed to process request: {e}")
+    try:
+        payload_str = msg.payload.decode()
+        logging.info(f"bot_sub_pub: Received message on {msg.topic}: {payload_str}")
+        data = json.loads(payload_str)
+        picture_paths = data.get("data", {}).get("pictures", [])
+        if not picture_paths:
+            logging.info("bot_sub_pub: No pictures found in payload.")
+            return
+
+        # Send pictures to Telegram group
+        for path in picture_paths:
+            try:
+                with open(path, 'rb') as photo_file:
+                    bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo_file)
+                    logging.info(f"bot_sub_pub: Sent picture {path} to group {GROUP_CHAT_ID}")
+            except FileNotFoundError:
+                logging.error(f"bot_sub_pub: Picture file not found: {path}")
+    except Exception as e:
+        logging.error(f"bot_sub_pub: Failed to process pictures: {e}")
 
 def main():
     client = get_mqtt_client(
-        subscriptions=[Topics.GET_LATEST_PICTURES.value],
-        client_id="bot_publisher"
+        subscriptions=[Topics.SEND_LATEST_PICTURES.value],
+        client_id="bot_sub_pub"
     )
     if client is None:
-        logging.error("bot_publisher: MQTT client is not available. Exiting.")
+        logging.error("bot_sub_pub: No MQTT client available.")
         return
-
     client.on_connect = on_connect
     client.on_message = on_message
-    client.on_disconnect = lambda client, userdata, rc: logging.info("bot_publisher: Disconnected from MQTT broker.")
-    client.on_log = lambda client, userdata, level, buf: logging.debug(f"MQTT log: {buf}")  # Optional logging
 
-    logging.info("bot_publisher: Starting MQTT event loop.")
+    logging.info("bot_sub_pub: Starting MQTT event loop.")
     client.loop_forever()
 
 if __name__ == "__main__":
