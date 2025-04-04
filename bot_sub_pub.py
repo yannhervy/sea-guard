@@ -25,25 +25,24 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """
-    Receives picture paths on SEND_LATEST_PICTURES and sends them to the Telegram group.
+    Receives an array of picture paths from SEND_LATEST_PICTURES and sends them to the Telegram group.
     """
     try:
         payload_str = msg.payload.decode()
         logging.info(f"bot_sub_pub: Received message on {msg.topic}: {payload_str}")
         data = json.loads(payload_str)
-        picture_paths = data.get("data", {}).get("pictures", [])
-        if not picture_paths:
-            logging.info("bot_sub_pub: No pictures found in payload.")
+        pictures = data.get("data", {}).get("pictures", [])
+        if not pictures:
+            logging.info("bot_sub_pub: No pictures array found in payload.")
             return
-
-        # Send pictures to Telegram group
-        for path in picture_paths:
+        
+        for picture_path in pictures:
             try:
-                with open(path, 'rb') as photo_file:
+                with open(picture_path, 'rb') as photo_file:
                     bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo_file)
-                    logging.info(f"bot_sub_pub: Sent picture {path} to group {GROUP_CHAT_ID}")
+                    logging.info(f"bot_sub_pub: Sent picture {picture_path} to group {GROUP_CHAT_ID}")
             except FileNotFoundError:
-                logging.error(f"bot_sub_pub: Picture file not found: {path}")
+                logging.error(f"bot_sub_pub: Picture file not found: {picture_path}")
     except Exception as e:
         logging.error(f"bot_sub_pub: Failed to process pictures: {e}")
 
