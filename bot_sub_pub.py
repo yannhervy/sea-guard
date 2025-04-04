@@ -36,13 +36,16 @@ def on_message(client, userdata, msg):
             logging.info("bot_sub_pub: No pictures array found in payload.")
             return
         
-        for picture_path in pictures:
-            try:
-                with open(picture_path, 'rb') as photo_file:
-                    bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo_file)
-                    logging.info(f"bot_sub_pub: Sent picture {picture_path} to group {GROUP_CHAT_ID}")
-            except FileNotFoundError:
-                logging.error(f"bot_sub_pub: Picture file not found: {picture_path}")
+        async def send_pictures_async():
+            for picture_path in pictures:
+                try:
+                    with open(picture_path, 'rb') as photo_file:
+                        await bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo_file)
+                        logging.info(f"bot_sub_pub: Sent picture {picture_path} to group {GROUP_CHAT_ID}")
+                except FileNotFoundError:
+                    logging.error(f"bot_sub_pub: Picture file not found: {picture_path}")
+
+        asyncio.run(send_pictures_async())
     except Exception as e:
         logging.error(f"bot_sub_pub: Failed to process pictures: {e}")
 
