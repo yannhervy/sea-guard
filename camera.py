@@ -72,7 +72,7 @@ def take_picture():
             "-undercolor", "black",
             "-gravity", "SouthWest",
             "-annotate", "+10+40",
-            text_overlay,
+            text_overlay + " 📸",  # Add emoji to the overlay text
             str(picture_path)
         ])
         logger.info(f"Started overlay in background for {picture_path}")
