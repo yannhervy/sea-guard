@@ -24,6 +24,7 @@ from mqtt_payload import create_payload, publish_payload, MQTTPayload  # Import 
 
 # ----------------------- KONFIGURATION -----------------------
 logging.basicConfig(level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
