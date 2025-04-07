@@ -62,17 +62,18 @@ def take_picture():
         subprocess.run(command, check=True)
         logger.info(f"Picture taken and saved to {picture_path}")
 
-        # Add overlay text with a black background
+        # Add overlay text with a black background, using Noto Color Emoji
         text_overlay = f"SEAHUT57 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         subprocess.Popen([
             "convert",
             str(picture_path),
+            "-font", "Noto Color Emoji",          # <-- Använd vår emoji-vänliga font
             "-pointsize", "32",
             "-fill", "white",
             "-undercolor", "black",
             "-gravity", "SouthWest",
             "-annotate", "+10+40",
-            text_overlay + " 📸",  # Add emoji to the overlay text
+            text_overlay + " 📸",  # Lägg till emoji
             str(picture_path)
         ])
         logger.info(f"Started overlay in background for {picture_path}")
