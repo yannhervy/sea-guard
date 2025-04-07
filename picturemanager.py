@@ -1,4 +1,7 @@
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import re
 import json
 import time
@@ -7,6 +10,8 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 import paho.mqtt.client as mqtt
+from mqtt_topics import Topics  # Import Topics enum
+from mqtt_payload import create_payload, publish_payload  # Import helper functions
 
 # ----------- KONFIGURATION -----------
 
@@ -20,8 +25,8 @@ RETENTION_DAYS = 3
 
 MQTT_BROKER = 'localhost'
 MQTT_PORT = 1883
-MQTT_TOPIC_GET = 'GET_LATEST_PICTURES_N'
-MQTT_TOPIC_SEND = 'SEND_LATEST_PICTURES'
+MQTT_TOPIC_GET = Topics.GET_LATEST_PICTURES
+MQTT_TOPIC_SEND = Topics.SEND_LATEST_PICTURES
 
 # ----------- LOGGNING -----------
 
@@ -49,13 +54,15 @@ def delete_old_pictures():
         logger.warning(f"Katalogen '{PICTURE_FOLDER}' finns inte!")
         return
 
-    files = os.listdir(PICTURE_FOLDER)
     now = datetime.now()
     cutoff_date = now - timedelta(days=RETENTION_DAYS)
 
     deleted_files = 0
-    for file_name in files:
-        match = re.match(FILENAME_PATTERN, file_name)
+    for file_path in PICTURE_FOLDER.iterdir():
+        if not file_path.is_file():
+            continue
+
+        match = re.match(FILENAME_PATTERN, file_path.name)
         if not match:
             continue
 
@@ -70,31 +77,33 @@ def delete_old_pictures():
                 int(hour), int(minute), int(second)
             )
         except ValueError as e:
-            logger.error(f"Kunde inte tolka datum från '{file_name}': {e}")
+            logger.error(f"Kunde inte tolka datum från '{file_path.name}': {e}")
             continue
 
         if file_datetime < cutoff_date:
-            file_path = PICTURE_FOLDER / file_name
             try:
                 file_path.unlink()
                 deleted_files += 1
-                logger.info(f"Raderade: {file_name}")
+                logger.info(f"Raderade: {file_path.name}")
             except Exception as e:
-                logger.error(f"Fel vid borttagning av '{file_name}': {e}")
+                logger.error(f"Fel vid borttagning av '{file_path.name}': {e}")
 
     logger.info(f"Rensning klar. {deleted_files} filer borttagna.")
 
 def get_latest_pictures(n):
     """Hämtar sökvägarna till de N senaste bilderna."""
+    logger.info(f"Hämtar de senaste {n} bilderna...")
     if not PICTURE_FOLDER.exists():
         logger.warning(f"Katalogen '{PICTURE_FOLDER}' finns inte!")
         return []
 
-    files = os.listdir(PICTURE_FOLDER)
     picture_files = []
 
-    for file_name in files:
-        match = re.match(FILENAME_PATTERN, file_name)
+    for file_path in PICTURE_FOLDER.iterdir():
+        if not file_path.is_file():
+            continue
+
+        match = re.match(FILENAME_PATTERN, file_path.name)
         if not match:
             continue
 
@@ -108,8 +117,7 @@ def get_latest_pictures(n):
                 int(year), int(month), int(day),
                 int(hour), int(minute), int(second)
             )
-            file_path = str((PICTURE_FOLDER / file_name).resolve())
-            picture_files.append((file_datetime, file_path))
+            picture_files.append((file_datetime, str(file_path.resolve())))
         except ValueError:
             continue
 
@@ -125,26 +133,43 @@ def get_latest_pictures(n):
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logger.info("Ansluten till MQTT-broker.")
-        client.subscribe(MQTT_TOPIC_GET)
+        client.subscribe(MQTT_TOPIC_GET.value)  # Use enum value
     else:
         logger.error(f"Misslyckades att ansluta till MQTT, rc={rc}")
 
 def on_message(client, userdata, msg):
     logger.info(f"Meddelande mottaget på ämnet '{msg.topic}': {msg.payload.decode()}")
 
-    if msg.topic == MQTT_TOPIC_GET:
+    if msg.topic == MQTT_TOPIC_GET.value:  # Use enum value
         try:
             payload = msg.payload.decode().strip()
-            n = int(payload)
-            logger.info(f"Hämtar de {n} senaste bilderna...")
-
-            latest_pictures = get_latest_pictures(n)
-
-            response_payload = json.dumps(latest_pictures)
-            client.publish(MQTT_TOPIC_SEND, response_payload)
-            logger.info(f"Skickade {len(latest_pictures)} bilder på ämnet '{MQTT_TOPIC_SEND}'.")
+            handle_get_latest_pictures(payload)
         except Exception as e:
             logger.error(f"Fel vid hantering av meddelande: {e}")
+
+def handle_get_latest_pictures(payload):
+    """
+    Handles the GET_LATEST_PICTURES message.
+    """
+    try:
+        # Parse the payload as JSON
+        data = json.loads(payload)
+        count = data.get("data", {}).get("count", 1)  # Default to 1 if count is missing
+        logger.info(f"Request received for the latest {count} pictures.")
+
+        latest_pictures = get_latest_pictures(count)
+
+        response_payload = create_payload(
+            source="picturemanager",
+            event="SEND_LATEST_PICTURES",
+            data={"pictures": latest_pictures}
+        )
+        publish_payload(MQTT_TOPIC_SEND.value, response_payload)  # Use standardized payload
+        logger.info(f"Skickade {len(latest_pictures)} bilder på ämnet '{MQTT_TOPIC_SEND.value}'.")
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse payload as JSON: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
 
 # ----------- TASK LOOPAR -----------
 
@@ -155,6 +180,7 @@ def run_daily_cleanup():
         time.sleep(24 * 60 * 60)
 
 def start_mqtt_client():
+    global client
     client = mqtt.Client()
 
     client.on_connect = on_connect

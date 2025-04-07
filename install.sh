@@ -5,11 +5,17 @@ echo "============================================"
 
 # Uppdatera systemet
 echo "📦 Uppdaterar paketlistor..."
-sudo apt update && sudo apt upgrade -y
+if ! sudo apt update && sudo apt upgrade -y; then
+    echo "❌ Misslyckades att uppdatera systemet."
+    exit 1
+fi
 
 # Installera Mosquitto broker + clients
 echo "📡 Installerar Mosquitto broker och klientverktyg..."
-sudo apt install -y mosquitto mosquitto-clients
+if ! sudo apt install -y mosquitto mosquitto-clients; then
+    echo "❌ Misslyckades att installera Mosquitto."
+    exit 1
+fi
 
 # Starta och aktivera mosquitto-tjänsten
 echo "🛠️ Startar och aktiverar mosquitto-tjänsten..."
@@ -18,7 +24,10 @@ sudo systemctl start mosquitto
 
 # Installera Python + pip + venv (om inte redan installerat)
 echo "🐍 Installerar Python3, pip3 och venv om de saknas..."
-sudo apt install -y python3 python3-pip python3-venv python3-full
+if ! sudo apt install -y python3 python3-pip python3-venv python3-full; then
+    echo "❌ Misslyckades att installera Python och dess verktyg."
+    exit 1
+fi
 
 # Skapa och aktivera en virtuell miljö
 echo "🌱 Skapar virtuell miljö för Python..."
@@ -32,6 +41,23 @@ source venv/bin/activate
 echo "📜 Installerar Python-dependencies från requirements.txt..."
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# Ensure python-dotenv is installed
+pip install python-dotenv
+
+# Install or upgrade paho-mqtt to the latest version
+echo "📡 Installerar eller uppdaterar paho-mqtt till senaste version..."
+if ! pip install --upgrade paho-mqtt; then
+    echo "❌ Misslyckades att installera eller uppdatera paho-mqtt."
+    exit 1
+fi
+
+# Install RPi.GPIO for Raspberry Pi
+echo "📡 Installerar RPi.GPIO för PIR-sensorn..."
+if ! pip install RPi.GPIO; then
+    echo "❌ Misslyckades att installera RPi.GPIO."
+    exit 1
+fi
 
 # Avsluta med att visa status
 echo "🚀 Allt klart! Sea Guard är redo att patrullera."
