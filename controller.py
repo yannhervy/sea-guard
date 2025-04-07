@@ -56,6 +56,8 @@ def on_message(client, userdata, msg):
         trigger_picture_capture()
         time.sleep(1)
         trigger_picture_capture()
+        time.sleep(10)
+        trigger_picture_capture()
 
 def trigger_picture_capture():
     """
