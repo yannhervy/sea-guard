@@ -67,7 +67,7 @@ def take_picture():
         subprocess.Popen([
             "convert",
             str(picture_path),
-            "-font", "Noto Color Emoji",          # <-- Använd vår emoji-vänliga font
+            "-font", "Noto-Color-Emoji",          # <-- Använd vår emoji-vänliga font
             "-pointsize", "32",
             "-fill", "white",
             "-undercolor", "black",
