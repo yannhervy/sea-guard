@@ -2,6 +2,7 @@ import sys
 import os
 import time
 import threading
+from datetime import datetime, timedelta
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import logging
@@ -13,17 +14,18 @@ from mqtt_client import get_mqtt_client  # Import the singleton MQTT client
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
-LOG_FILE = os.path.join(LOG_DIR, "controller.log")
 
 # Ensure the logs directory exists
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # ----------- LOGGNING -----------
+today_log_file = os.path.join(LOG_DIR, f"controller_{datetime.now().strftime('%Y-%m-%d')}.log")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler(LOG_FILE),
+        logging.FileHandler(today_log_file),
         logging.StreamHandler()
     ]
 )

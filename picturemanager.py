@@ -12,6 +12,7 @@ from pathlib import Path
 import paho.mqtt.client as mqtt
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
+from filemanager import clean_old_logfiles
 
 # ----------- KONFIGURATION -----------
 
@@ -176,6 +177,7 @@ def handle_get_latest_pictures(payload):
 def run_daily_cleanup():
     while True:
         delete_old_pictures()
+        clean_old_logfiles(LOG_FOLDER, days=RETENTION_DAYS)
         logger.info("Väntar i 24 timmar till nästa rensning...")
         time.sleep(24 * 60 * 60)
 

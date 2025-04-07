@@ -2,7 +2,7 @@ import sys
 import os
 import subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import paho.mqtt.client as mqtt
 from mqtt_topics import Topics  # Import Topics enum
@@ -14,15 +14,20 @@ MQTT_PORT = 1883
 PICTURE_FOLDER = Path(__file__).parent / "pics"
 LATEST_PICTURE_TOPIC = Topics.SEND_LATEST_PICTURES.value  # Use Topics enum
 
-# ----------- LOGGNING -----------
+# ----------- LOGGING -----------
+LOG_DIR = Path(__file__).parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+today_log_file = LOG_DIR / f"camera_{datetime.now().strftime('%Y-%m-%d')}.log"
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("camera.log"),
+        logging.FileHandler(today_log_file),
         logging.StreamHandler()
     ]
 )
+
 logger = logging.getLogger(__name__)
 
 # ----------- MQTT CLIENT -----------
