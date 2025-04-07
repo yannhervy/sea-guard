@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import logging
 import asyncio
@@ -34,6 +35,7 @@ async def send_pictures_async(pictures):
     Coroutine to send pictures asynchronously to Telegram.
     """
     for picture_path in pictures:
+        time.sleep(10) # Sleep for 10 seconds to wait for overlay to be created
         try:
             with open(picture_path, 'rb') as photo_file:
                 await bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo_file)
