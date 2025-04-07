@@ -7,7 +7,11 @@ from telegram import Bot
 from mqtt_client import get_mqtt_client
 from mqtt_topics import Topics
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 load_dotenv()
 
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')

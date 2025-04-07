@@ -1,5 +1,12 @@
 import subprocess
 import sys
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
 # Set time using ntpdate (must be installed)
 def sync_time():

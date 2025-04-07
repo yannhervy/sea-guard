@@ -4,16 +4,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(message)s",
+    handlers=[logging.StreamHandler()]
+)
+
 import paho.mqtt.client as mqtt
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
-
-# Configure logging
-logging.basicConfig(
-    filename="mqtt_messages.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s"
-)
 
 # Callback when the client connects to the broker
 def on_connect(client, userdata, flags, rc):

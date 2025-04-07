@@ -1,5 +1,12 @@
 import paho.mqtt.client as mqtt
 from mqtt_topics import Topics  # Import Topics enum
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
 # MQTT-inställningar
 MQTT_BROKER = 'localhost'  # Byt till din broker-URL om den inte är lokal

@@ -1,5 +1,12 @@
 import RPi.GPIO as GPIO
 import time
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
 PIR_PIN = 17
 

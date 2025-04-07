@@ -23,7 +23,13 @@ from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload, MQTTPayload  # Import MQTTPayload class
 
 # ----------------------- KONFIGURATION -----------------------
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 load_dotenv()
