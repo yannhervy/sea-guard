@@ -38,7 +38,6 @@ def setup_logging():
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(LOG_FILE),
             logging.StreamHandler()  # Konsolen
         ]
     )
