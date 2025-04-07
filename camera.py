@@ -49,10 +49,11 @@ def take_picture():
         # Use libcamera-still to capture the image
         command = [
             "libcamera-still",
+            "--nopreview",
             "-o", str(picture_path),
-            "--width", "1920",  # Set resolution width
-            "--height", "1080",  # Set resolution height
-            "--timeout", "1000"  # Set capture timeout in milliseconds
+            "--width", "1280",  # Lower resolution => faster capture
+            "--height", "720",
+            "--timeout", "100"  # 0.1 seconds
         ]
         subprocess.run(command, check=True)
         logger.info(f"Picture taken and saved to {picture_path}")
