@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import threading
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import logging
@@ -47,17 +48,20 @@ def on_connect(client, userdata, flags, rc, properties=None):
     else:
         logger.error(f"Failed to connect to MQTT broker, return code {rc}")
 
+def schedule_capture(delay_seconds):
+    threading.Timer(delay_seconds, trigger_picture_capture).start()
+
+def start_motion_capture_sequence():
+    schedule_capture(0)
+    schedule_capture(1)
+    schedule_capture(2)
+    schedule_capture(12)
+
 def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.PIR_MOTION_DETECTED.value:
-        logger.info("Motion detected! Triggering picture capture...")
-        trigger_picture_capture()
-        time.sleep(1)
-        trigger_picture_capture()
-        time.sleep(1)
-        trigger_picture_capture()
-        time.sleep(10)
-        trigger_picture_capture()
+        logger.info("Motion detected! Triggering picture capture in a separate thread...")
+        start_motion_capture_sequence()
 
 def trigger_picture_capture():
     """
