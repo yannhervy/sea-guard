@@ -89,7 +89,7 @@ def monitor_pir_sensor():
                     payload = create_payload(source="pir-sensor", event="MOTION_DETECTED")
                     publish_payload(Topics.PIR_MOTION_DETECTED.value, payload)
                 last_state = current_state  # Update the last state
-            time.sleep(5)  # Polling interval
+            time.sleep(0.25)  # Polling interval
     except KeyboardInterrupt:
         logger.info("Stopping PIR sensor monitoring...")
     finally:

@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import logging
@@ -50,6 +51,10 @@ def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.PIR_MOTION_DETECTED.value:
         logger.info("Motion detected! Triggering picture capture...")
+        trigger_picture_capture()
+        time.sleep(1)
+        trigger_picture_capture()
+        time.sleep(1)
         trigger_picture_capture()
 
 def trigger_picture_capture():
