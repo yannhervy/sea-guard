@@ -39,7 +39,7 @@ def setup_mqtt():
 # ----------- CAMERA SETUP -----------
 def take_picture():
     """
-    Captures an image using libcamera-still, saves it to the PICTURE_FOLDER, and publishes its path.
+    Captures an image using libcamera-still, saves it to the PICTURE_FOLDER, adds overlay text, and publishes its path.
     """
     try:
         PICTURE_FOLDER.mkdir(exist_ok=True)
@@ -56,6 +56,20 @@ def take_picture():
         ]
         subprocess.run(command, check=True)
         logger.info(f"Picture taken and saved to {picture_path}")
+
+        # Add overlay text
+        text_overlay = f"SEAHUT57 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        subprocess.run([
+            "convert",
+            str(picture_path),
+            "-pointsize", "32",
+            "-fill", "white",
+            "-gravity", "SouthWest",
+            "-annotate", "+10+40",
+            text_overlay,
+            str(picture_path)
+        ], check=True)
+        logger.info(f"Added date/time overlay to {picture_path}")
 
         # Publish the path of the latest picture
         payload = create_payload(
