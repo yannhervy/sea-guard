@@ -60,7 +60,7 @@ def take_picture():
 
         # Add overlay text with a black background
         text_overlay = f"SEAHUT57 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        subprocess.run([
+        subprocess.Popen([
             "convert",
             str(picture_path),
             "-pointsize", "32",
@@ -70,8 +70,8 @@ def take_picture():
             "-annotate", "+10+40",
             text_overlay,
             str(picture_path)
-        ], check=True)
-        logger.info(f"Added date/time overlay to {picture_path}")
+        ])
+        logger.info(f"Started overlay in background for {picture_path}")
 
         # Publish the path of the latest picture
         payload = create_payload(
