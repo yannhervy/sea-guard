@@ -102,7 +102,8 @@ def take_picture(delays=None):
     capture_picture()
 
     for d in delays:
-        time.sleep(d)
+        if d > 0:
+            time.sleep(d)
         capture_picture()
 
     # After all captures are done, publish them together
