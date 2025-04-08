@@ -47,15 +47,12 @@ def take_picture(delays=None):
     """
     Takes multiple pictures according to the 'delays' array. 
     If delays = [1,1,1,10], it will:
-    1. Take first picture immediately
+    1. Sleep 1s, take picture
     2. Sleep 1s, take picture
     3. Sleep 1s, take picture
-    4. Sleep 1s, take picture
-    5. Sleep 10s, take final picture
+    4. Sleep 10s, take final picture
+    If no array or empty array is provided, capture once.
     """
-    if not delays:
-        delays = []
-
     captured_pictures = []
 
     def capture_picture():
@@ -98,8 +95,16 @@ def take_picture(delays=None):
         except Exception as e:
             logger.error(f"Unexpected error while taking picture: {e}")
 
-    # Take the first picture immediately
-    capture_picture()
+    if not delays:
+        capture_picture()
+        payload = create_payload(
+            source="camera",
+            event="TAKE_PICTURE",
+            data={"pictures": captured_pictures}
+        )
+        publish_payload(Topics.SEND_LATEST_PICTURES.value, payload)
+        logger.info(f"Published captured picture path to topic '{Topics.SEND_LATEST_PICTURES.value}'")
+        return
 
     for d in delays:
         if d > 0:
