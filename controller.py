@@ -49,14 +49,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
     else:
         logger.error(f"Failed to connect to MQTT broker, return code {rc}")
 
-def schedule_capture(delay_seconds):
-    threading.Timer(delay_seconds, trigger_picture_capture).start()
 
-def start_motion_capture_sequence():
-    schedule_capture(0)
-    schedule_capture(1)
-    schedule_capture(2)
-    schedule_capture(12)
 
 def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
@@ -64,14 +57,14 @@ def on_message(client, userdata, msg):
         message = "Motion detected! Initiating capture sequence."
         publish_payload(Topics.SEND_MESSAGE.value, create_payload(source="controller", event="SEND_MESSAGE", message=message))
         logger.info("Motion detected! Triggering picture capture in a separate thread...")
-        start_motion_capture_sequence()
+        trigger_picture_capture
 
 def trigger_picture_capture():
     """
     Publishes a message to the TAKE_PICTURE topic to trigger the camera.
     """
     try:
-        payload = create_payload(source="controller", event="TAKE_PICTURE")
+        payload = create_payload(source="controller", event="TAKE_PICTURE", sequence=[1, 1, 1, 10])
         publish_payload(Topics.TAKE_PICTURE.value, payload)
         logger.info(f"Published TAKE_PICTURE event to topic '{Topics.TAKE_PICTURE.value}'")
     except Exception as e:

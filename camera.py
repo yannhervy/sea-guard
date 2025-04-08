@@ -8,6 +8,7 @@ import paho.mqtt.client as mqtt
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
 import time
+import json
 
 # ----------- KONFIGURATION -----------
 MQTT_BROKER = "localhost"
@@ -125,8 +126,12 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.TAKE_PICTURE.value:
-        logger.info("TAKE_PICTURE command received. Capturing image...")
-        take_picture()
+        try:
+            data = json.loads(msg.payload.decode())
+            sequence = data.get("data", {}).get("sequence", [])
+            take_picture(delays=sequence)
+        except Exception as e:
+            logger.error(f"Failed to extract sequence from payload: {e}")
 
 # ----------- MAIN LOOP -----------
 def main():
