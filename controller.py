@@ -54,7 +54,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
 def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.PIR_MOTION_DETECTED.value:
-        message = "Motion detected! Initiating capture sequence."
+        message = "🚨 Rörelse detekterad! Startar bildsekvens..."
         publish_payload(
             Topics.SEND_MESSAGE.value,
             create_payload(
@@ -74,7 +74,7 @@ def trigger_picture_capture():
         payload = create_payload(
             source="controller",
             event="TAKE_PICTURE",
-            data={"sequence": [1, 1, 1, 10]}
+            data={"sequence": [0, 1, 1, 10]}  # Example delays for picture capture
         )
         publish_payload(Topics.TAKE_PICTURE.value, payload)
         logger.info(f"Published TAKE_PICTURE event to topic '{Topics.TAKE_PICTURE.value}'")
