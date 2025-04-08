@@ -25,7 +25,10 @@ loop = None  # Will hold the global event loop
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logging.info("bot_sub_pub: Connected to MQTT broker.")
-        client.subscribe([Topics.SEND_LATEST_PICTURES.value, Topics.SEND_MESSAGE.value])
+        client.subscribe([
+            (Topics.SEND_LATEST_PICTURES.value, 0),
+            (Topics.SEND_MESSAGE.value, 0)
+        ])
         logging.info(f"bot_sub_pub: Subscribed to {Topics.SEND_LATEST_PICTURES.value} and {Topics.SEND_MESSAGE.value}.")
     else:
         logging.error(f"bot_sub_pub: Connection failed with rc={rc}")
@@ -56,6 +59,7 @@ def on_message(client, userdata, msg):
     """
     Receives an array of picture paths from SEND_LATEST_PICTURES and sends them to the Telegram group.
     """
+    logging.info(f"bot_sub_pub: Received message on {msg.topic}: {msg.payload.decode()}")
     try:
         if msg.topic == Topics.SEND_LATEST_PICTURES:
             payload_str = msg.payload.decode()
