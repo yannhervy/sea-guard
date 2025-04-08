@@ -72,12 +72,11 @@ def on_message(client, userdata, msg):
             asyncio.run_coroutine_threadsafe(send_pictures_async(pictures), loop)
         elif msg.topic == Topics.SEND_MESSAGE:
             payload_str = msg.payload.decode()
-            logging.info(f"bot_sub_pub: Received message on {msg.topic}: {payload_str}")
-            message = payload_str.message
+            data = json.loads(payload_str)
+            message = data.get("data", {}).get("message", "")
             if not message:
                 logging.info("bot_sub_pub: No message found in payload.")
                 return
-            # Extract the message from the payload  
             asyncio.run_coroutine_threadsafe(send_message_async(message), loop)
 
         # Schedule the async send in the global loop
