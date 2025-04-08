@@ -55,7 +55,14 @@ def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.PIR_MOTION_DETECTED.value:
         message = "Motion detected! Initiating capture sequence."
-        publish_payload(Topics.SEND_MESSAGE.value, create_payload(source="controller", event="SEND_MESSAGE", message=message))
+        publish_payload(
+            Topics.SEND_MESSAGE.value,
+            create_payload(
+                source="controller",
+                event="SEND_MESSAGE",
+                data={"message": message}
+            )
+        )
         logger.info("Motion detected! Triggering picture capture in a separate thread...")
         trigger_picture_capture
 
@@ -64,7 +71,11 @@ def trigger_picture_capture():
     Publishes a message to the TAKE_PICTURE topic to trigger the camera.
     """
     try:
-        payload = create_payload(source="controller", event="TAKE_PICTURE", sequence=[1, 1, 1, 10])
+        payload = create_payload(
+            source="controller",
+            event="TAKE_PICTURE",
+            data={"sequence": [1, 1, 1, 10]}
+        )
         publish_payload(Topics.TAKE_PICTURE.value, payload)
         logger.info(f"Published TAKE_PICTURE event to topic '{Topics.TAKE_PICTURE.value}'")
     except Exception as e:
