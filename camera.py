@@ -7,6 +7,7 @@ import logging
 import paho.mqtt.client as mqtt
 from mqtt_topics import Topics  # Import Topics enum
 from mqtt_payload import create_payload, publish_payload  # Import helper functions
+import time
 
 # ----------- KONFIGURATION -----------
 MQTT_BROKER = "localhost"
@@ -41,54 +42,76 @@ def setup_mqtt():
         exit(1)
 
 # ----------- CAMERA SETUP -----------
-def take_picture():
+def take_picture(delays=None):
     """
-    Captures an image using libcamera-still, saves it to the PICTURE_FOLDER, adds overlay text, and publishes its path.
+    Takes multiple pictures according to the 'delays' array. 
+    If delays = [1,1,1,10], it will:
+    1. Take first picture immediately
+    2. Sleep 1s, take picture
+    3. Sleep 1s, take picture
+    4. Sleep 1s, take picture
+    5. Sleep 10s, take final picture
     """
-    try:
-        PICTURE_FOLDER.mkdir(exist_ok=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        picture_path = PICTURE_FOLDER / f"{timestamp}.jpg"
+    if not delays:
+        delays = []
 
-        # Use libcamera-still to capture the image
-        command = [
-            "libcamera-still",
-            "--nopreview",
-            "-o", str(picture_path),
-            "--width", "1280",  # Lower resolution => faster capture
-            "--height", "720",
-            "--timeout", "100"  # 0.1 seconds
-        ]
-        subprocess.run(command, check=True)
-        logger.info(f"Picture taken and saved to {picture_path}")
+    captured_pictures = []
 
-        # Add overlay text with a black background
-        text_overlay = f"SEAHUT57 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        subprocess.Popen([
-            "convert",
-            str(picture_path),
-            "-pointsize", "32",
-            "-fill", "white",
-            "-undercolor", "black",
-            "-gravity", "SouthWest",
-            "-annotate", "+10+40",
-            text_overlay,
-            str(picture_path)
-        ])
-        logger.info(f"Started overlay in background for {picture_path}")
+    def capture_picture():
+        try:
+            PICTURE_FOLDER.mkdir(exist_ok=True)
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+            picture_path = PICTURE_FOLDER / f"{timestamp}.jpg"
 
-        # Publish the path of the latest picture
-        payload = create_payload(
-            source="camera",
-            event="TAKE_PICTURE",
-            data={"pictures": [str(picture_path)]}  # Use an array for consistency
-        )
-        publish_payload(Topics.SEND_LATEST_PICTURES.value, payload)
-        logger.info(f"Published latest picture path to topic '{Topics.SEND_LATEST_PICTURES.value}'")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to take picture with libcamera-still: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error while taking picture: {e}")
+            # Use libcamera-still to capture the image
+            command = [
+                "libcamera-still",
+                "--nopreview",
+                "-o", str(picture_path),
+                "--width", "1280",  # Lower resolution => faster capture
+                "--height", "720",
+                "--timeout", "100"  # 0.1 seconds
+            ]
+            subprocess.run(command, check=True)
+            logger.info(f"Picture taken and saved to {picture_path}")
+
+            # Add overlay text with a black background
+            text_overlay = f"SEAHUT57 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            subprocess.Popen([
+                "convert",
+                str(picture_path),
+                "-pointsize", "32",
+                "-fill", "white",
+                "-undercolor", "black",
+                "-gravity", "SouthWest",
+                "-annotate", "+10+40",
+                text_overlay,
+                str(picture_path)
+            ])
+            logger.info(f"Started overlay in background for {picture_path}")
+
+            # Store the path of the captured picture
+            captured_pictures.append(str(picture_path))
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to take picture with libcamera-still: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error while taking picture: {e}")
+
+    # Take the first picture immediately
+    capture_picture()
+
+    for d in delays:
+        time.sleep(d)
+        capture_picture()
+
+    # After all captures are done, publish them together
+    payload = create_payload(
+        source="camera",
+        event="TAKE_PICTURE",
+        data={"pictures": captured_pictures}
+    )
+    publish_payload(Topics.SEND_LATEST_PICTURES.value, payload)
+    logger.info(f"Published all captured picture paths to topic '{Topics.SEND_LATEST_PICTURES.value}'")
 
 # ----------- CALLBACKS -----------
 def on_connect(client, userdata, flags, rc):

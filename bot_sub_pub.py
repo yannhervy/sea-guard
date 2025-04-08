@@ -25,8 +25,8 @@ loop = None  # Will hold the global event loop
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logging.info("bot_sub_pub: Connected to MQTT broker.")
-        client.subscribe(Topics.SEND_LATEST_PICTURES.value)
-        logging.info(f"bot_sub_pub: Subscribed to {Topics.SEND_LATEST_PICTURES.value}")
+        client.subscribe([Topics.SEND_LATEST_PICTURES.value, Topics.SEND_MESSAGE.value])
+        logging.info(f"bot_sub_pub: Subscribed to {Topics.SEND_LATEST_PICTURES.value} and {Topics.SEND_MESSAGE.value}.")
     else:
         logging.error(f"bot_sub_pub: Connection failed with rc={rc}")
 
@@ -35,29 +35,48 @@ async def send_pictures_async(pictures):
     Coroutine to send pictures asynchronously to Telegram.
     """
     for picture_path in pictures:
-        time.sleep(10) # Sleep for 10 seconds to wait for overlay to be created
+        
         try:
             with open(picture_path, 'rb') as photo_file:
                 await bot.send_photo(chat_id=GROUP_CHAT_ID, photo=photo_file)
                 logging.info(f"bot_sub_pub: Sent picture {picture_path} to group {GROUP_CHAT_ID}")
         except FileNotFoundError:
             logging.error(f"bot_sub_pub: Picture file not found: {picture_path}")
+async def send_message_async(message):
+    """
+    Coroutine to send a message asynchronously to Telegram.
+    """
+    try:
+        await bot.send_message(chat_id=GROUP_CHAT_ID, text=message)
+        logging.info(f"bot_sub_pub: Sent message to group {GROUP_CHAT_ID}: {message}")
+    except Exception as e:
+        logging.error(f"bot_sub_pub: Failed to send message: {e}")
 
 def on_message(client, userdata, msg):
     """
     Receives an array of picture paths from SEND_LATEST_PICTURES and sends them to the Telegram group.
     """
     try:
-        payload_str = msg.payload.decode()
-        logging.info(f"bot_sub_pub: Received message on {msg.topic}: {payload_str}")
-        data = json.loads(payload_str)
-        pictures = data.get("data", {}).get("pictures", [])
-        if not pictures:
-            logging.info("bot_sub_pub: No pictures array found in payload.")
-            return
+        if msg.topic == Topics.SEND_LATEST_PICTURES:
+            payload_str = msg.payload.decode()
+            logging.info(f"bot_sub_pub: Received message on {msg.topic}: {payload_str}")
+            data = json.loads(payload_str)
+            pictures = data.get("data", {}).get("pictures", [])
+            if not pictures:
+                logging.info("bot_sub_pub: No pictures array found in payload.")
+                return
+            asyncio.run_coroutine_threadsafe(send_pictures_async(pictures), loop)
+        elif msg.topic == Topics.SEND_MESSAGE:
+            payload_str = msg.payload.decode()
+            logging.info(f"bot_sub_pub: Received message on {msg.topic}: {payload_str}")
+            message = payload_str.message
+            if not message:
+                logging.info("bot_sub_pub: No message found in payload.")
+                return
+            # Extract the message from the payload  
+            asyncio.run_coroutine_threadsafe(send_message_async(message), loop)
 
         # Schedule the async send in the global loop
-        asyncio.run_coroutine_threadsafe(send_pictures_async(pictures), loop)
     except Exception as e:
         logging.error(f"bot_sub_pub: Failed to process pictures: {e}")
 

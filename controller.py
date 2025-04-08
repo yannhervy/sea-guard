@@ -61,6 +61,8 @@ def start_motion_capture_sequence():
 def on_message(client, userdata, msg):
     logger.info(f"Message received on topic '{msg.topic}': {msg.payload.decode()}")
     if msg.topic == Topics.PIR_MOTION_DETECTED.value:
+        message = "Motion detected! Initiating capture sequence."
+        publish_payload(Topics.SEND_MESSAGE.value, create_payload(source="controller", event="SEND_MESSAGE", message=message))
         logger.info("Motion detected! Triggering picture capture in a separate thread...")
         start_motion_capture_sequence()
 
