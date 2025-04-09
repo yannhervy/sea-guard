@@ -1,5 +1,6 @@
 import sys
 import os
+import logging
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import subprocess
 import signal
@@ -32,6 +33,36 @@ RESET = "\033[0m"
 log_dir = "logs"
 processes = []
 
+def setup_logging():
+    """Set up logging to both a file and standard output."""
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    log_file = os.path.join(log_dir, "main.log")
+    logger = logging.getLogger("main")
+    logger.setLevel(logging.INFO)
+
+    # File handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.INFO)
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+
+    # Stream handler (standard output)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    stream_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    stream_handler.setFormatter(stream_formatter)
+
+    # Add handlers to logger
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
+    return logger
+
+# Initialize the logger
+logger = setup_logging()
+
 # Check if internet is available
 def has_internet(timeout=3) -> bool:
     try:
@@ -48,24 +79,23 @@ def wait_for_internet(check_interval=600):
     fast_retry_duration = 60  # sekunder
     start_time = time.time()
     while not has_internet():
-        print(f"[{datetime.now(timezone.utc).isoformat()}] No internet. Retrying soon...")
+        logger.info("No internet. Retrying soon...")
         if time.time() - start_time < fast_retry_duration:
             time.sleep(5)  # snabba retry första 60 sekunder
         else:
             time.sleep(check_interval)
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Internet is available.")
-
+    logger.info("Internet is available.")
 
 def sync_system_time(max_attempts=5, delay=5):
-    print("Syncing system time to UTC...")
+    logger.info("Syncing system time to UTC...")
     for attempt in range(max_attempts):
         result = subprocess.run(["sudo", "ntpdate", "-u", "pool.ntp.org"])
         if result.returncode == 0:
-            print("Time sync completed.\n")
+            logger.info("Time sync completed.")
             return
-        print(f"Time sync failed (attempt {attempt + 1}/{max_attempts}). Retrying in {delay} sec...")
+        logger.error(f"Time sync failed (attempt {attempt + 1}/{max_attempts}). Retrying in {delay} sec...")
         time.sleep(delay)
-    print("Time sync failed too many times, aborting startup.")
+    logger.error("Time sync failed too many times, aborting startup.")
     sys.exit(1)
 
 def ensure_log_dir():
@@ -93,7 +123,7 @@ def start_all():
     for i, script in enumerate(scripts):
         log_path = get_log_path(script)
         log_file = open(log_path, "a")
-        print(f"[{datetime.now(timezone.utc).isoformat()}] Launching {script} → logging to {log_path}")
+        logger.info(f"Launching {script} → logging to {log_path}")
 
         if platform.system() == "Windows":
             creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
@@ -117,7 +147,7 @@ def start_all():
         processes.append((p, log_file))
 
 def terminate_all():
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Shutting down all subprocesses...")
+    logger.info("Shutting down all subprocesses...")
     for p, log_file in processes:
         try:
             if platform.system() == "Windows":
@@ -125,7 +155,7 @@ def terminate_all():
             else:
                 os.killpg(os.getpgid(p.pid), signal.SIGTERM)
         except Exception as e:
-            print(f"Failed to terminate {p.pid}: {e}")
+            logger.error(f"Failed to terminate {p.pid}: {e}")
         log_file.close()
     processes.clear()
 
@@ -140,13 +170,13 @@ def main_loop():
     while True:
         wait_for_internet()
         sync_system_time()
-        print(f"[{datetime.now(timezone.utc).isoformat()}] Starting all subprocesses...")
+        logger.info("Starting all subprocesses...")
         start_all()
 
         while True:
             time.sleep(600)  # Check every 10 minutes
             if not has_internet():
-                print(f"[{datetime.now(timezone.utc).isoformat()}] Lost internet connection. Killing subprocesses and waiting...")
+                logger.info("Lost internet connection. Killing subprocesses and waiting...")
                 terminate_all()
                 break  # Break out of inner loop, go back to waiting for internet
 
