@@ -33,31 +33,40 @@ log_dir = "logs"
 processes = []
 
 # Check if internet is available
-def has_internet(host="8.8.8.8", port=53, timeout=3) -> bool:
+def has_internet(timeout=3) -> bool:
     try:
+        # Försök göra en DNS-lookup
         socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        socket.gethostbyname("pool.ntp.org")
+        # Och sen även testa TCP-anslutning till IP
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(("8.8.8.8", 53))
         return True
     except socket.error:
         return False
 
 def wait_for_internet(check_interval=600):
+    fast_retry_duration = 60  # sekunder
+    start_time = time.time()
     while not has_internet():
-        print(f"[{datetime.now(timezone.utc).isoformat()}] No internet. Retrying in {check_interval // 60} minutes...")
-        time.sleep(check_interval)
+        print(f"[{datetime.now(timezone.utc).isoformat()}] No internet. Retrying soon...")
+        if time.time() - start_time < fast_retry_duration:
+            time.sleep(5)  # snabba retry första 60 sekunder
+        else:
+            time.sleep(check_interval)
     print(f"[{datetime.now(timezone.utc).isoformat()}] Internet is available.")
 
-def sync_system_time():
-    print("Syncing system time to UTC...")
-    if platform.system() == "Windows":
-        print("Time sync is not supported on Windows. Skipping...")
-        return
 
-    result = subprocess.run(["sudo", "python3", "sync_time.py"])
-    if result.returncode != 0:
-        print("Time sync failed, aborting startup.")
-        sys.exit(1)
-    print("Time sync completed.\n")
+def sync_system_time(max_attempts=5, delay=5):
+    print("Syncing system time to UTC...")
+    for attempt in range(max_attempts):
+        result = subprocess.run(["sudo", "ntpdate", "-u", "pool.ntp.org"])
+        if result.returncode == 0:
+            print("Time sync completed.\n")
+            return
+        print(f"Time sync failed (attempt {attempt + 1}/{max_attempts}). Retrying in {delay} sec...")
+        time.sleep(delay)
+    print("Time sync failed too many times, aborting startup.")
+    sys.exit(1)
 
 def ensure_log_dir():
     if not os.path.exists(log_dir):
