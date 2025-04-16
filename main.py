@@ -38,7 +38,8 @@ def setup_logging():
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    log_file = os.path.join(log_dir, "main.log")
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    log_file = os.path.join(log_dir, f"{date_str}_main.log")
     logger = logging.getLogger("main")
     logger.setLevel(logging.INFO)
 
