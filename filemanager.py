@@ -5,9 +5,9 @@ from pathlib import Path
 def clean_old_logfiles(log_dir: Path, days=3):
     """
     Removes log files older than 'days' from the specified directory.
-    Log files must be named in the format 'something_YYYY-MM-DD.log'.
+    Log files must be named in the format 'YYYY-MM-DD_something.log'.
     """
-    pattern = re.compile(r".+_(\d{4}-\d{2}-\d{2})\.log$")
+    pattern = re.compile(r"(\d{4}-\d{2}-\d{2})_.+\.log$")
     for file_path in log_dir.glob("*.log"):
         match = pattern.match(file_path.name)
         if match:
